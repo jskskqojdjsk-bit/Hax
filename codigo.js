@@ -690,17 +690,80 @@ function roomAdminSettings(playerItem) {
     const distance = Math.sqrt(Math.pow(currentX - touchStart.x, 2) + Math.pow(currentY - touchStart.y, 2));
     const duration = Date.now() - touchStartTime;
     
-    // Tap rápido sem movimento (< 250ms e < 10px) = abre admin
-    // NÃO é um arraste
+    // Tap rápido sem movimento (< 250ms e < 10px) = abre menu de mover
     if(duration < 250 && distance < 10) {
       e.stopPropagation();
       e.preventDefault();
-      const contextEvent = new MouseEvent("contextmenu", {
-        bubbles: true, cancelable: true, view: window, button: 2,
-      });
-      playerItem.dispatchEvent(contextEvent);
+      const playerName = playerItem.querySelector('[data-hook="name"]')?.textContent;
+      showMovePlayerMenu(playerName);
     }
   }, false);
+}
+
+function showMovePlayerMenu(playerName) {
+  // Criar modal com 3 botões
+  const modal = document.createElement("div");
+  modal.classList.add("dialog", "basic-dialog", "admin-only");
+  
+  const title = document.createElement("h1");
+  title.textContent = `Move: ${playerName}`;
+  
+  const buttons = document.createElement("div");
+  buttons.classList.add("buttons");
+  buttons.style.flexDirection = "column";
+  buttons.style.gap = "8px";
+  
+  // Botão Spectator
+  const specBtn = document.createElement("button");
+  specBtn.textContent = "Spectators";
+  specBtn.style.width = "100%";
+  specBtn.onclick = () => {
+    prefabMessage(`/move ${playerName} spec`);
+    modal.remove();
+    popupsContainer.style.display = "none";
+  };
+  
+  // Botão Blue
+  const blueBtn = document.createElement("button");
+  blueBtn.textContent = "Blue Team";
+  blueBtn.style.width = "100%";
+  blueBtn.onclick = () => {
+    prefabMessage(`/move ${playerName} blue`);
+    modal.remove();
+    popupsContainer.style.display = "none";
+  };
+  
+  // Botão Red
+  const redBtn = document.createElement("button");
+  redBtn.textContent = "Red Team";
+  redBtn.style.width = "100%";
+  redBtn.onclick = () => {
+    prefabMessage(`/move ${playerName} red`);
+    modal.remove();
+    popupsContainer.style.display = "none";
+  };
+  
+  // Botão Fechar
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "Close";
+  closeBtn.style.width = "100%";
+  closeBtn.style.marginTop = "8px";
+  closeBtn.onclick = () => {
+    modal.remove();
+    popupsContainer.style.display = "none";
+  };
+  
+  buttons.appendChild(specBtn);
+  buttons.appendChild(blueBtn);
+  buttons.appendChild(redBtn);
+  buttons.appendChild(closeBtn);
+  
+  modal.appendChild(title);
+  modal.appendChild(buttons);
+  
+  const popupsContainer = getByDataHook("popups");
+  popupsContainer.appendChild(modal);
+  popupsContainer.style.display = "flex";
 }
 
 // =============================================================================
