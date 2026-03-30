@@ -314,7 +314,7 @@ function onDOMChange(mutations, observer) {
     getByDataHook("store") || createStoreButton();
 
     if (body.querySelector(".room-view .admin")) {
-      body.querySelectorAll(".player-list-item").forEach(roomAdminSettings);
+      getByDataHook("admin-delegation") || setupAdminDelegation();
       getByDataHook("shirt-btn")    || createShirtButtons();
       getByDataHook("password-btn") || createPasswordButton();
     }
@@ -670,49 +670,89 @@ function createResetSettingsButton() {
 }
 
 // =============================================================================
-// UI — Admin: long press em jogadores
+// UI — Admin: Sistema de delegação para mover jogadores
 // =============================================================================
 
-function roomAdminSettings(playerItem) {
+function setupAdminDelegation() {
   if (typeof ROOM_ADMIN_SETTINGS === "undefined") return;
 
-  let touchStart = {x: 0, y: 0};
-  let touchStartTime = 0;
+  const setUpContainer = getByDataHook("set-up");
+  if (!setUpContainer) return;
 
-  playerItem.addEventListener("touchstart", (e) => {
-    touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
-    touchStartTime = Date.now();
-  }, false);
-  
-  playerItem.addEventListener("touchend", (e) => {
-    const currentX = e.changedTouches[0].clientX;
-    const currentY = e.changedTouches[0].clientY;
-    const distance = Math.sqrt(Math.pow(currentX - touchStart.x, 2) + Math.pow(currentY - touchStart.y, 2));
-    const duration = Date.now() - touchStartTime;
-    
-    // Tap rápido sem movimento (< 250ms e < 10px) = abre menu de mover
-    if(duration < 250 && distance < 10) {
-      e.stopPropagation();
-      e.preventDefault();
-      const playerName = playerItem.querySelector('[data-hook="name"]')?.textContent;
-      showMovePlayerMenu(playerName);
-    }
-  }, false);
+  // Usar data-hook como flag para evitar duplicação
+  setUpContainer.setAttribute("data-hook", "admin-delegation");
+
+  setUpContainer.addEventListener(
+    "touchstart",
+    (e) => {
+      const playerItem = e.target.closest(".player-list-item");
+      if (!playerItem) return;
+      
+      playerItem._touchStart = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        time: Date.now(),
+      };
+    },
+    false
+  );
+
+  setUpContainer.addEventListener(
+    "touchend",
+    (e) => {
+      const playerItem = e.target.closest(".player-list-item");
+      if (!playerItem || !playerItem._touchStart) return;
+
+      const currentX = e.changedTouches[0].clientX;
+      const currentY = e.changedTouches[0].clientY;
+      const distance = Math.sqrt(
+        Math.pow(currentX - playerItem._touchStart.x, 2) +
+          Math.pow(currentY - playerItem._touchStart.y, 2)
+      );
+      const duration = Date.now() - playerItem._touchStart.time;
+
+      // Tap rápido sem movimento (< 250ms e < 10px) = abre menu de mover
+      if (duration < 250 && distance < 10) {
+        e.stopPropagation();
+        e.preventDefault();
+        const playerName = playerItem.querySelector(
+          '[data-hook="name"]'
+        )?.textContent;
+        if (playerName) {
+          showMovePlayerMenu(playerName);
+        }
+      }
+
+      playerItem._touchStart = null;
+    },
+    false
+  );
 }
 
 function showMovePlayerMenu(playerName) {
-  // Criar modal com 3 botões
+  // Limpar qualquer modal anterior
+  const existingModal = body.querySelector('[data-hook="move-modal"]');
+  if (existingModal) {
+    existingModal.remove();
+    const popupsContainer = getByDataHook("popups");
+    if (popupsContainer && popupsContainer.children.length === 0) {
+      popupsContainer.style.display = "none";
+    }
+  }
+
+  // Criar novo modal
   const modal = document.createElement("div");
   modal.classList.add("dialog", "basic-dialog", "admin-only");
-  
+  modal.setAttribute("data-hook", "move-modal");
+
   const title = document.createElement("h1");
   title.textContent = `Move: ${playerName}`;
-  
+
   const buttons = document.createElement("div");
   buttons.classList.add("buttons");
   buttons.style.flexDirection = "column";
   buttons.style.gap = "8px";
-  
+
   // Botão Spectator
   const specBtn = document.createElement("button");
   specBtn.textContent = "Spectators";
@@ -720,9 +760,12 @@ function showMovePlayerMenu(playerName) {
   specBtn.onclick = () => {
     prefabMessage(`/move ${playerName} spec`);
     modal.remove();
-    popupsContainer.style.display = "none";
+    const popupsContainer = getByDataHook("popups");
+    if (popupsContainer && popupsContainer.children.length === 0) {
+      popupsContainer.style.display = "none";
+    }
   };
-  
+
   // Botão Blue
   const blueBtn = document.createElement("button");
   blueBtn.textContent = "Blue Team";
@@ -730,9 +773,12 @@ function showMovePlayerMenu(playerName) {
   blueBtn.onclick = () => {
     prefabMessage(`/move ${playerName} blue`);
     modal.remove();
-    popupsContainer.style.display = "none";
+    const popupsContainer = getByDataHook("popups");
+    if (popupsContainer && popupsContainer.children.length === 0) {
+      popupsContainer.style.display = "none";
+    }
   };
-  
+
   // Botão Red
   const redBtn = document.createElement("button");
   redBtn.textContent = "Red Team";
@@ -740,9 +786,12 @@ function showMovePlayerMenu(playerName) {
   redBtn.onclick = () => {
     prefabMessage(`/move ${playerName} red`);
     modal.remove();
-    popupsContainer.style.display = "none";
+    const popupsContainer = getByDataHook("popups");
+    if (popupsContainer && popupsContainer.children.length === 0) {
+      popupsContainer.style.display = "none";
+    }
   };
-  
+
   // Botão Fechar
   const closeBtn = document.createElement("button");
   closeBtn.textContent = "Close";
@@ -750,17 +799,20 @@ function showMovePlayerMenu(playerName) {
   closeBtn.style.marginTop = "8px";
   closeBtn.onclick = () => {
     modal.remove();
-    popupsContainer.style.display = "none";
+    const popupsContainer = getByDataHook("popups");
+    if (popupsContainer && popupsContainer.children.length === 0) {
+      popupsContainer.style.display = "none";
+    }
   };
-  
+
   buttons.appendChild(specBtn);
   buttons.appendChild(blueBtn);
   buttons.appendChild(redBtn);
   buttons.appendChild(closeBtn);
-  
+
   modal.appendChild(title);
   modal.appendChild(buttons);
-  
+
   const popupsContainer = getByDataHook("popups");
   popupsContainer.appendChild(modal);
   popupsContainer.style.display = "flex";
@@ -1394,78 +1446,3 @@ function prefabMessage(text) {
 
 document.querySelector(".rightbar").remove();
 document.querySelector(".header").remove();
-
-// 🎮 SISTEMA DE TOQUE PARA MOVER JOGADORES (MOBILE)
-// 🎮 SISTEMA DE ARRASTE POR TOQUE PARA MOBILE (MOVER JOGADORES ENTRE TIMES)
-if(void 0!==VIRTUAL_JOYSTICK){
-  let draggedPlayer = null;
-  let dragStartPos = {x: 0, y: 0};
-  let dragStartTime = 0;
-  let isDraggingNow = false;
-  
-  body.addEventListener('touchstart', (e) => {
-    const playerEl = e.target.closest('.player-list-item');
-    if(playerEl) {
-      draggedPlayer = playerEl;
-      dragStartPos = {x: e.touches[0].clientX, y: e.touches[0].clientY};
-      dragStartTime = Date.now();
-      isDraggingNow = false;
-      playerEl.style.opacity = '0.6';
-      playerEl.style.backgroundColor = 'rgba(255, 200, 100, 0.5)';
-    }
-  }, true);
-  
-  body.addEventListener('touchmove', (e) => {
-    if(!draggedPlayer) return;
-    
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const distance = Math.sqrt(Math.pow(currentX - dragStartPos.x, 2) + Math.pow(currentY - dragStartPos.y, 2));
-    const duration = Date.now() - dragStartTime;
-    
-    // Se tem movimento > 20px OU tempo > 300ms com movimento, é um drag
-    if(distance >= 20 || (distance > 5 && duration > 300)) {
-      isDraggingNow = true;
-      
-      const elementsUnder = document.elementsFromPoint(currentX, currentY);
-      elementsUnder.forEach(el => {
-        const teamView = el.closest('.player-list-view');
-        if(teamView) {
-          teamView.style.backgroundColor = 'rgba(100, 200, 100, 0.3)';
-        }
-      });
-    }
-  }, true);
-  
-  body.addEventListener('touchend', (e) => {
-    if(!draggedPlayer) return;
-    
-    if(isDraggingNow) {
-      const endX = e.changedTouches[0].clientX;
-      const endY = e.changedTouches[0].clientY;
-      const elementBelow = document.elementFromPoint(endX, endY);
-      
-      if(elementBelow) {
-        const targetTeam = elementBelow.closest('.player-list-view');
-        if(targetTeam) {
-          const fromTeam = draggedPlayer.closest('.player-list-view').className.match(/t-(red|blue|spec)/)?.[1];
-          const toTeam = targetTeam.className.match(/t-(red|blue|spec)/)?.[1];
-          
-          if(fromTeam && toTeam && fromTeam !== toTeam) {
-            const playerName = draggedPlayer.querySelector('[data-hook="name"]')?.textContent;
-            console.log(`✅ Movendo: ${playerName} de ${fromTeam} para ${toTeam}`);
-            prefabMessage(`/move ${playerName} ${toTeam}`);
-          }
-        }
-      }
-    }
-    
-    draggedPlayer.style.opacity = '1';
-    draggedPlayer.style.backgroundColor = '';
-    document.querySelectorAll('.player-list-view').forEach(tv => {
-      tv.style.backgroundColor = '';
-    });
-    draggedPlayer = null;
-    isDraggingNow = false;
-  }, true);
-}
