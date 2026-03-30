@@ -1,1448 +1,734 @@
-// =============================================================================
-// HAXBALL MOBILE — InjecThor
-// Vixel Dev 2024
-// =============================================================================
+document.head.appendChild(Object.assign(document.createElement("style"), { innerHTML: "#thumb,body{touch-action:none}body{user-select:none;height:100%}@media only screen and (max-device-width:480px){body{touch-action:manipulation}}.header,.rightbar{display:none!important}.rounded{border:none;border-radius:50%}[view|=hidden]{display:none}[view|=visible]{display:flex;justify-content:center;align-items:center}[float]{position:absolute}svg{fill:#ecf0f3cc;width:30px;height:auto}#kick svg{width:50%}" }));
+document.querySelector('.gameframe').contentWindow.document.head.appendChild(Object.assign(document.createElement("style"), { innerHTML: ".room-view,.roomlist-view{height:100%;margin-top:0}.game-view>.top-section,.room-view{margin-top:0}.settings-view{width:100%;max-height:none}.game-view>[data-hook=popups]{background-color:#1a212585}.disconnected-view .dialog,.disconnected-view .room-view>.container{width:450px}.create-room-view>.dialog,.room-view.create-room-view>.container{max-width:450px;width:100%}body{background:#1a2125}[data-hook=leave-btn]{background:#c13535!important}.file-btn,[data-hook=rec-btn]{display:none!important}h1{text-align:center}.room-view>.container>.header-btns{bottom:0;right:10px;top:auto}.room-view>.container{max-width:none;max-height:max-content}.room-view{position:absolute;width:100%}.roomlist-view>.dialog{max-width:max-content;max-height:max-content}.game-state-view .bar>.scoreboard{display:flex;align-items:center;margin-right:50px}.chatbox-view{position:absolute;left:15px;margin:0;top:10px;width:30%;pointer-events:none;font-size:1rem;display:contents}.chatbox-view-contents{flex-direction:column-reverse;background:0 0;pointer-events:none}.chatbox-view-contents>.input{margin-bottom:10px;pointer-events:auto}.chatbox-view-contents>.log{flex-direction:column;pointer-events:none;overflow-y:scroll;scrollbar-width:none}.settings-view .section.selected{display:flex;align-items:center}.log-contents{display:flex;flex-direction:column-reverse;text-shadow:1px 1px 5px #000000cc}.fade-out{opacity:0;transition:opacity 10s ease-out}thead tr{display:table-row!important}svg{width: 1em}.input-options{position: absolute;width: 100%;height: 100%;z-index: 20;background-color: #1a2125;}" }));
 
-// =============================================================================
-// SETUP INICIAL — Frame, Body, Viewport
-// =============================================================================
-
-const gameFrame = document.querySelector(".gameframe").contentWindow;
-
-let stylesheet = document.createElement("style");
-gameFrame.document.head.appendChild(stylesheet);
-
-let body = document.querySelector(".gameframe").contentWindow.document.body;
-
-document
-  .querySelector("meta[name=viewport]")
-  .setAttribute(
-    "content",
-    "width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=0"
-  );
-
-var metaTag = document.createElement("meta");
-metaTag.setAttribute("http-equiv", "X-UA-Compatible");
-metaTag.setAttribute("content", "ie=edge");
-gameFrame.document.head.appendChild(metaTag);
-
-// =============================================================================
-// FLAGS DE FUNCIONALIDADES
-// =============================================================================
-
-const VIRTUAL_JOYSTICK   = true;
-const JOYSTICK           = true;
-const HIDE_HEADER        = true;
-const ADBLOCK            = true;
-const ROOM_SEARCH        = true;
-const CLIPBOARD_ROOM     = true;
-const STORE_BUTTON       = true;
-const ROOM_ADMIN_SETTINGS = true;
-const SHIRTS_BUTTON      = true;
-const PASSWORD_BUTTON    = true;
-
-// =============================================================================
-// CSS CUSTOMIZADO
-// =============================================================================
-
-const CUSTOM_CSS = `
-  .game-view > .top-section,
-  .room-view { margin-top: 0 }
-
-  .stats-view,
-  [data-hook=ok] { text-transform: uppercase }
-
-  * { user-select: none }
-
-  body { background: #1a2125 }
-
-  [data-hook=leave-btn] {
-    background: #c13535 !important;
-    margin-right: 6px
-  }
-
-  .inputrow,
-  .roomlist-view > .dialog > .splitter > .buttons > .file-btn,
-  .sound-button-container,
-  [data-hook=rec-btn],
-  [data-hook=tvideo-lowlatency],
-  [data-hook=tvideo-showavatars],
-  [data-hook=tvideo-showindicators],
-  [data-hook=tvideo-teamcol],
-  div.chatbox-view > div > div.input,
-  div:has(> [data-hook=chatbgmode]),
-  div:has(> [data-hook=chatfocusheight-range]),
-  div:has(> [data-hook=chatopacity-range]) { display: none !important }
-
-  div.chatbox-view > div > div.input { pointer-events: all }
-  div.chatbox-view > div > div.input > input { overflow: hidden }
-
-  .game-view > [data-hook=popups] { background-color: #1a212585 !important }
-
-  h1 { border-bottom-color: #fec45b !important }
-
-  .room-view {
-    margin-bottom: 0;
-    height: 100%
-  }
-
-  .room-view > .container {
-    margin-top: auto !important;
-    max-width: none;
-    max-height: none;
-    border-radius: 0;
-    width: 100%;
-    margin-bottom: 30px
-  }
-
-  .room-view > .container > .header-btns {
-    bottom: 0;
-    top: auto;
-    display: flex;
-    flex-flow: row-reverse;
-    left: 10px;
-    right: auto
-  }
-
-  [data-hook=stadium-pick] {
-    position: fixed !important;
-    background: 0 0 !important;
-    color: transparent !important;
-    width: 300px;
-    height: 20px
-  }
-
-  [data-hook=stadium-name] { text-decoration: underline }
-
-  .room-view > .container > .controls {
-    display: flex;
-    align-self: center;
-    position: absolute;
-    bottom: 0;
-    right: 10px;
-    top: auto;
-    margin-bottom: 15px !important;
-    z-index: 1;
-    flex-flow: row-reverse
-  }
-
-  .settings-view {
-    width: 100%;
-    height: 100%;
-    max-height: unset;
-    border-radius: 0
-  }
-
-  .settings-view .tabcontents {
-    width: 100%;
-    text-align: -webkit-center
-  }
-
-  .settings-view .section.selected {
-    display: flex;
-    width: max-content
-  }
-
-  .choose-nickname-view { flex-direction: row-reverse }
-
-  .fade-out {
-    opacity: 0;
-    transition: opacity 10s ease-out
-  }
-
-  .game-view > .bottom-section {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none
-  }
-
-  .roomlist-view > .dialog,
-  .view-wrapper > .dialog {
-    max-width: calc(100vw - 2vw);
-    max-height: calc(100vh - 2vw)
-  }
-
-  .chatbox-view-contents > .drag,
-  .graph,
-  .showing-room-view > .gameplay-section { display: none }
-
-  body > div > div > div.dialog > p:nth-child(2) { font-size: 0% }
-
-  body > div > .roomlist-view > div.dialog > p:nth-child(2)::after {
-    font-size: medium;
-    content: "HaxBall Mobile is now Open-Source. Feel free to make and publish improvements to the developer community";
-    font-weight: 700
-  }
-
-  .filters::after {
-    content: "Vixel Dev 2024 - InjecThor";
-    white-space: pre;
-    font-style: italic
-  }
-
-  button[data-hook=shirt-btn]:after {
-    content: "◑";
-    font-size: 1.25em
-  }
-
-  button[data-hook=shirt-btn] {
-    margin-right: 6px;
-    margin-left: 6px
-  }
-
-  div.chatbox-view > div > div.log.subtle-thin-scrollbar > div > p {
-    display: none;
-    text-shadow: 1px 0 4px rgba(0,0,0,.66)
-  }
-
-  div.chatbox-view > div > div.log.subtle-thin-scrollbar > div > p:nth-last-child(-n+5) {
-    opacity: 1;
-    display: block;
-    animation: 10s forwards fadeOut
-  }
-
-  .log > div > p:has(br) { display: none !important }
-
-  @keyframes fadeOut {
-    0%   { opacity: 1 }
-    100% { opacity: 0; display: none }
-  }
-
-  .chatbox-view-contents {
-    flex-direction: column-reverse;
-    pointer-events: none;
-    background: 0 0;
-    height: 100vh;
-    position: absolute;
-    text-align: center;
-    align-items: center;
-    top: 30px;
-    width: 100vw
-  }
-
-  .showing-room-view > .bottom-section > .chatbox-view > div { top: 0 !important }
-
-  .chatbox-view-contents > .log { flex-direction: column }
-
-  .chatbox-view {
-    pointer-events: none;
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 0 !important;
-    overflow-y: visible
-  }
-
-  .log-contents {
-    display: flex;
-    flex-direction: column-reverse
-  }
-
-  .stats-view {
-    left: 50%;
-    bottom: 0;
-    background-color: transparent;
-    text-shadow: 1px 1px 1px #000, 0 1px 1px #000;
-    padding: 8px;
-    margin: 4px;
-    line-height: 1.5em;
-    position: absolute;
-    text-align: center !important;
-    opacity: .25;
-    width: min-content;
-    transform: translate(-50%, 0);
-    pointer-events: all;
-    display: flex;
-    flex-direction: column-reverse
-  }
-
-  .chatbox-view-contents > .autocompletebox { position: relative }
-`;
-
-// =============================================================================
-// LOGO CUSTOMIZADO
-// =============================================================================
-
-const CUSTOM_LOGO = {
-  url: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill-rule='evenodd' clip-rule='evenodd' image-rendering='optimizeQuality' shape-rendering='geometricPrecision' text-rendering='geometricPrecision' viewBox='0 0 2859 2858'%3E%3Cpath fill='%23eda242' d='M1249 0h124a139997 139997 0 0 1 548 550l2 120-1 3L1249 0Zm-143 26h2l788 789L816 1896 26 1106 1106 26Zm206 500c28 1 45 15 51 43l-11 357c-6 26-22 41-49 44a51 51 0 0 1-50-55l10-287-291 10c-31-3-49-20-51-51 2-27 16-43 43-49l348-12Zm-489 99c20-1 36 7 47 24l265 578c11 28 3 50-22 66-29 11-51 4-67-21L779 687c-4-34 11-55 44-62ZM587 920a52 52 0 0 1 50 43l-9 298 12 1c90-4 180-7 271-9 34-2 54 14 60 49-4 32-22 49-54 50l-338 12c-34-3-52-22-52-56l11-340c4-29 20-45 49-48ZM0 1371v-118l1-5 674 673a3825 3825 0 0 1-129-2L2 1376l-2-5Zm1543-36a5355 5355 0 0 1 61 63l-205 205h-3l-60-59v-2l207-207Zm206 202 170 172 2 4 2 210-1 207a13671 13671 0 0 1-175-176 23576 23576 0 0 1 2-417Zm-120 3 2 149-1 149-149-150 148-148Zm408 289 5 2 166 167 4 8v415l-172-171-3-7v-414Zm292 292 149 149-149 149v-298Zm231 233h3l60 61v2l-205 205h-2l-61-60v-3l205-205Zm299 261v2l-3 5-236 236h-7l-137-47c-3-3-4-7-3-10v-67c4-11 11-20 22-26l227-228c5-6 13-9 21-8h58c4-1 8 0 11 4l47 139Z'/%3E%3C/svg%3E",
-  height: "100px",
-};
-
-// =============================================================================
-// FONTE CUSTOMIZADA
-// =============================================================================
-
-const CUSTOM_FONT = {
-  name: "Inter",
-  type: "sans-serif",
-  url: "https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap",
-};
-
-// =============================================================================
-// INICIALIZAÇÃO DE CANVAS / OBSERVER
-// =============================================================================
-
-if (!localStorage.getItem("low_latency_canvas")) {
-  localStorage.setItem("low_latency_canvas", 0);
-  location.reload();
+if(!localStorage.getItem('low_latency_canvas') || localStorage.getItem('low_latency_canvas') == 1){
+    localStorage.setItem('low_latency_canvas',0)
+    location.reload();
 }
 
-const observer = new MutationObserver(onDOMChange);
-const observerConfig = { childList: true, subtree: true };
+///////////////////////////////////////// CONSTANTS /////////////////////////////////////////
+let gameFrame = document.querySelector('.gameframe').contentWindow;
+let body;
 
-// =============================================================================
-// OBSERVER — Detecção de mudanças no DOM
-// =============================================================================
+const tips = [
+    "Tip: maintain a good defensive position.",
+    "Tip: communicate and coordinate with your teammates.",
+    "Tip: practice your dribbling skills to outplay opponents.",
+    "Tip: learn to anticipate the movements of the ball and players.",
+    "Tip: don't rush when shooting; find the right moment.",
+    "Tip: control your speed to maintain ball control.",
+    "Tip: use rebounds off walls to surprise opponents.",
+    "Tip: adapt your strategy based on team size and game mode.",
+    "Tip: be patient in defense and wait for the right moment to attack.",
+    "Tip: practice synchronization in passes and shots with your team.",
+    "Tip: maintain a balance between offense and defense.",
+    "Tip: study your opponents' playing style to anticipate their moves.",
+    "Tip: avoid standing still; move constantly to be unpredictable.",
+    "Tip: keep an eye on your teammates' positions to facilitate passes.",
+    "Tip: be aware of the remaining time and adjust your strategy accordingly.",
+    "Tip: learn to use rebounds in the corners to create opportunities.",
+    "Tip: be a versatile player, capable of playing different roles in the team.",
+    "Tip: avoid constantly colliding with teammates; maintain space.",
+    "Tip: use the chat to quickly coordinate tactics with your team.",
+    "Tip: analyze your mistakes and learn from them to improve your game.",
+    "Tip: watch matches of experienced players to learn new strategies.",
+    "Tip: do not underestimate the importance of a good pass; it can change the course of the game.",
+    "Tip: stay calm in pressure situations; concentration is key.",
+    "Tip: play regularly to improve your consistency and skills.",
+    "Tip: coordinate pressing strategies with your teammates to force errors in the opposing team.",
+    "Tip: be a fair player; respect is fundamental.",
+    "Tip: adapt your playing style based on the number of players on the field.",
+    "Tip: don't be afraid to try new tactics and adjust your approach.",
+    "Tip: be aware of your own goalkeeper's position to avoid own goals.",
+    "Tip: use wall rebounds to make unexpected shots.",
+    "Tip: learn to read the plays of the opposing team to anticipate their movements.",
+    "Tip: have fun and enjoy the game; a positive attitude enhances performance."
+];
 
-function onDOMChange(mutations, observer) {
-  if (getByDataHook("loader-view")) return;
+const constrolsStyleBase = "#joystick,#kick{z-index:100;bottom:CONTROLS_MARGINvw}.neo{opacity:CONTROLS_OPACITY;background-color:#c2c2c255;box-shadow:6px 6px 10px 0 #a5abb133,-5px -5px 9px 0 #a5abb133;color:#dedede55;font-weight:bolder;font-size:1.5rem}.sizer{width:CONTROLS_WIDTH%;aspect-ratio: 1 / 1;}#joystick{left:CONTROLS_MARGIN%;overflow:visible}#thumb{width:40%;height:40%;background-color:#ecf0f3cc}#kick{right:CONTROLS_MARGIN%}button.neo:active{opacity:KICK_OPACITY}";
 
-  if (body.querySelector(".roomlist-view")) {
-    getByDataHook("search")    || createSearchbar();
-    getByDataHook("url-room")  || createURLButton();
-    filterRooms(getByDataHook("search").value);
-    showControls(false);
+const countryFilterHandler = document.createElement('style');
+const hideButtons = document.createElement('style');
 
-  } else if (body.querySelector(".settings-view")) {
-    getByDataHook("inputopacity-value") || (createInputSettings(), createResetSettingsButton());
-    showControls(false);
+hideButtons.innerHTML = "button{display:none}";
+gameFrame.document.head.appendChild(hideButtons);
 
-  } else if (body.querySelector(".room-view") || body.querySelector(".showing-room-view")) {
-    getByDataHook("store") || createStoreButton();
+const controlsHandler = document.createElement('style');
 
-    if (body.querySelector(".room-view .admin")) {
-      getByDataHook("admin-delegation") || setupAdminDelegation();
-      getByDataHook("shirt-btn")    || createShirtButtons();
-      getByDataHook("password-btn") || createPasswordButton();
+const copyrightHandler = document.createElement("span");
+
+const aboutHandler = document.createElement("div");
+
+const inputOptionsHandler = document.createElement("div");
+
+const config = { childList: true, subtree: true };
+
+///////////////////////////////////////// VARIABLES /////////////////////////////////////////
+
+let firstTime = true;
+let canResetJoystick = true;
+let lastMessage;
+let joystick;
+let kickButton;
+
+///////////////////////////////////////// MAIN /////////////////////////////////////////
+
+var checkLoaderInterval = setInterval(checkLoader, 1000);
+
+function checkLoader() {
+    if (!gameFrame.document.body.querySelector(".loader-view") && gameFrame.document.body.querySelector('.choose-nickname-view')) {
+        clearInterval(checkLoaderInterval);
+        body = gameFrame.document.body.children[0];
+        init();
+    }
+}
+
+function init() {
+    //Remove ads and header
+    document.querySelector('.rightbar').remove();
+    document.querySelector('.header').remove();
+
+    document.querySelector("meta[name=viewport]").setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=0');
+
+    //const viewportTag = document.createElement('meta');
+    //viewportTag.name = 'viewport';
+    //viewportTag.content = 'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=0';
+    //gameFrame.document.head.appendChild(viewportTag);
+
+    setupCountryFilter();
+    setupControls();
+    setupCopyright(true);
+    hideButtons.remove();
+
+    //Mutation observer
+    const observer = new MutationObserver(function(mutationsList, observer) {
+        try {
+            updateUI();
+            updatedChat();
+        } catch {}
+    });
+    try { updateUI() } catch {}
+    observer.observe(body, config);
+
+    gameFrame.head.innerHTML += "<style>button{display: }</style>";
+    aboutHandler.setAttribute('data-hook', 'about');
+    aboutHandler.style.cssText = 'background: #1a2125; position: absolute; width: 100%; height: 100%; display: none; justify-content: center; flex-direction: column; align-items: center; margin: 0;';
+    aboutHandler.innerHTML = '<div class="dialog basic-dialog" style="max-width: 50%;"><h1>About us</h1><p>We are Vixel Dev, a small development studio that wants the Haxball community to grow, without hurting its owners. We do not monetize this application, as it is free and contains no ads. </p><p>We want to thank @basro for creating this game, and we hope not to disturb with this port. </p><p></p><p>To contact us:</p><p>E-mail: vixeldev@gmail.com</p><p>Instragram: @haxballmobile</p><div class="buttons"><button data-hook="closeabout">Close</button></div></div>';
+
+    body.parentNode.appendChild(aboutHandler);
+    if (localStorage.getItem("firstTime") === null) {
+        aboutHandler.style.display = 'flex';
+        localStorage.setItem("firstTime", true)
+        localStorage.setItem("view_mode", 1)
+        localStorage.setItem("resolution_scale", 0.75)
+    }
+    body.parentNode.querySelector('[data-hook="closeabout"]').addEventListener("click", function() {
+        aboutHandler.style.display = 'none';
+    });
+
+    console.log("PAGE_LOADED")
+}
+
+///////////////////////////////////////// UTILS /////////////////////////////////////////
+
+function insertAfter(e, n) {
+    e.parentNode.insertBefore(n, e.nextSibling);
+}
+
+function pickRandom(arr) {
+    if (!Array.isArray(arr) || arr.length === 0) {
+        return null; // Return null for invalid input or empty array
     }
 
-    handleFPSText();
-    showControls(false, true);
-
-  } else if (
-    body.querySelector(".game-view") &&
-    !body.querySelector(".showing-room-view") &&
-    !body.querySelector(".settings-view")
-  ) {
-    showControls(true);
-    handleFPSText();
-  }
+    const randomIndex = Math.floor(Math.random() * arr.length);
+    return arr[randomIndex];
 }
 
-observer.observe(body, observerConfig);
-
-// =============================================================================
-// CHAT — Input / Hide
-// =============================================================================
-
-function showChatInput(focus = true) {
-  const chatboxView = body.querySelector(".chatbox-view");
-  const inputWrapper = chatboxView.querySelector(".input");
-  const inputEl = inputWrapper.querySelector("input");
-
-  inputWrapper.style = "display: block !important;";
-  if (focus) inputEl.focus();
-  inputEl.addEventListener("blur", hideChatInput);
+function getByDataHook(dataHook) {
+    return body.querySelector('[data-hook="' + dataHook + '"]');
 }
 
-function hideChatInput() {
-  const inputWrapper = body.querySelector(".chatbox-view").querySelector(".input");
-  inputWrapper.style = "";
+function openHaxballURL(uri) {
+    const code = uri.replace(/^https?:\/\/(www\.)?haxball\.com\/play\?c=/, "");
+
+    if (code.length > 0) {
+        window.location.replace("https://www.haxball.com/play?c=" + code);
+    }
 }
 
-// =============================================================================
-// CHAT — Joystick de mensagens rápidas
-// =============================================================================
-
-const chatJoystick      = document.createElement("div");
-const chatJoystickPanel = document.createElement("div");
-const chatStick         = document.createElement("div");
-const chatJoystickLabel = document.createElement("p");
-
-let chatSelectedMessage = ["", 0];
-
-chatJoystick.setAttribute("id", "chat-joystick");
-chatJoystickPanel.setAttribute("id", "chat-joystick-panel");
-chatStick.setAttribute("id", "chat-stick");
-chatStick.innerHTML = `
-  <svg id="chat-svg" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20">
-    <path d="M5.8 12.2V6H2C.9 6 0 6.9 0 8v6c0 1.1.9 2 2 2h1v3l3-3h5c1.1 0 2-.9 2-2v-1.82a.943.943 0 0 1-.2.021h-7zM18 1H9c-1.1 0-2 .9-2 2v8h7l3 3v-3h1c1.1 0 2-.899 2-2V3c0-1.1-.9-2-2-2"/>
-  </svg>
-`;
-chatJoystickLabel.setAttribute("id", "chat-joystick-label");
-chatJoystickLabel.innerText = "GG!";
-
-document.body.appendChild(chatJoystickPanel);
-chatJoystickPanel.appendChild(chatJoystick);
-chatJoystick.appendChild(chatJoystickLabel);
-chatJoystick.appendChild(chatStick);
-
-// --- Estilos do Chat Joystick ---
-let chatJoystickStylesheet = document.createElement("style");
-chatJoystickStylesheet.innerHTML = `
-  #chat-joystick,
-  #chat-stick {
-    color: #dedede55;
-    font-weight: bolder;
-    font-size: 1.5rem;
-    border-radius: 50%;
-  }
-
-  #chat-joystick {
-    width: 120px;
-    height: 120px;
-    opacity: 1;
-    position: absolute;
-    right: 0;
-    top: 0;
-    margin: 30px;
-  }
-
-  #chat-joystick-panel {
-    width: min-content;
-    height: min-content;
-    position: absolute;
-    right: 0;
-    top: 35px;
-    display: none;
-    z-index: 3;
-    opacity: var(--joystick-opacity);
-  }
-
-  #chat-stick {
-    width: calc(100px * .45);
-    height: calc(100px * .45);
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: #244967;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: rgba(0, 0, 0, 0.66) 1px 0px 4px;
-    filter: saturate(1.4);
-  }
-
-  #chat-svg { fill: #FFFFFF; }
-
-  #chat-joystick-label {
-    color: white;
-    position: absolute;
-    text-align: center;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 0.8em;
-    font-family: 'Inter';
-    font-weight: normal;
-    text-shadow: 1px 0px 4px rgba(0,0,0,0.66);
-  }
-`;
-
-let chatJoystickRootStylesheet = document.createElement("style");
-document.head.appendChild(chatJoystickStylesheet);
-document.head.appendChild(chatJoystickRootStylesheet);
-
-// --- Eventos do Chat Joystick ---
-let isDraggingChatJoystick = false;
-
-chatJoystickPanel.addEventListener("mousedown",  startDrag);
-chatJoystickPanel.addEventListener("touchstart", startDrag);
-chatJoystickPanel.addEventListener("touchstart", chatDoubleTouch);
-chatJoystickPanel.addEventListener("mouseup",    endDrag);
-chatJoystickPanel.addEventListener("touchend",   endDrag);
-chatJoystickPanel.addEventListener("mousemove",  moveStick);
-chatJoystickPanel.addEventListener("touchmove",  moveStick);
-
-resetChatStick();
-
-var chatTapedTwice = false;
-
-function chatDoubleTouch(e) {
-  if (!chatTapedTwice) {
-    chatTapedTwice = true;
-    setTimeout(() => { chatTapedTwice = false; }, 300);
-    return false;
-  }
-  e.preventDefault();
-  showChatInput();
-}
-
-function startDrag(e) {
-  isDraggingChatJoystick = true;
-  e.preventDefault();
-}
-
-function endDrag(e) {
-  isDraggingChatJoystick = false;
-  if (chatSelectedMessage[1] > 30) prefabMessage(chatSelectedMessage[0]);
-  resetChatStick();
-}
-
-function moveStick(e) {
-  if (!isDraggingChatJoystick) return;
-
-  const rect = chatJoystick.getBoundingClientRect();
-  let x = e.clientX - rect.left;
-  let y = e.clientY - rect.top;
-
-  if (e.type === "touchmove") {
-    x = e.touches[0].clientX - rect.left;
-    y = e.touches[0].clientY - rect.top;
-  }
-
-  const cx = chatJoystick.offsetWidth  / 2;
-  const cy = chatJoystick.offsetHeight / 2;
-
-  let angle    = Math.atan2(y - cy, x - cx) * (180 / Math.PI);
-  let distance = Math.min(chatJoystick.offsetWidth / 2, Math.sqrt((x - cx) ** 2 + (y - cy) ** 2));
-
-  chatStick.style.transition = "none";
-  chatStick.style.transform  = `translate(${distance * Math.cos(angle * (Math.PI / 180)) - cx / 2}px, ${distance * Math.sin(angle * (Math.PI / 180)) - cy / 2}px)`;
-
-  if (distance > 30) {
-    if      (angle > -25  && angle < 25)   chatSelectedMessage[0] = "GG!";
-    else if (angle > 65   && angle < 115)  chatSelectedMessage[0] = "Defending";
-    else if (angle > -115 && angle < -65)  chatSelectedMessage[0] = "Pass to me!";
-    else if (angle < -155 || angle > 155)  chatSelectedMessage[0] = "Teamwork!";
-    chatSelectedMessage[1] = distance;
-  } else {
-    chatSelectedMessage[0] = "";
-    chatSelectedMessage[1] = 0;
-  }
-
-  chatJoystickLabel.innerText  = chatSelectedMessage[0];
-  chatJoystickLabel.style.opacity = distance / 50;
-}
-
-function resetChatStick() {
-  chatStick.style.transition    = "transform 0.4s ease-out";
-  chatStick.style.transform     = "translate(-50%, -50%)";
-  chatSelectedMessage[0]        = "";
-  chatSelectedMessage[1]        = 0;
-  chatJoystickLabel.style.opacity = "0";
-}
-
-// =============================================================================
-// UI — Botão URL Room
-// =============================================================================
-
-function createURLButton() {
-  if (typeof CLIPBOARD_ROOM === "undefined") return;
-
-  let btn = document.createElement("button");
-  btn.setAttribute("data-hook", "url-room");
-  btn.innerHTML = '<i class="icon-link"></i><div>URL Room</div>';
-
-  btn.addEventListener("click", () => {
-    if (getByDataHook("input-url")) return;
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "label-input";
-    wrapper.style.cssText = "background-color: transparent; padding: 0; display: flex;";
-    wrapper.innerHTML = '<label>URL:</label><br><input data-hook="input-url" type="url">';
-
-    getByDataHook("search").parentNode.style.display = "none";
-    insertAfter(body.querySelector("div.dialog > p:nth-child(2)"), wrapper);
-
-    const input = wrapper.querySelector("input");
-    input.focus();
-
-    input.addEventListener("blur", () => {
-      getByDataHook("search").parentNode.style.display = "flex";
-      wrapper.remove();
-    });
-
-    input.addEventListener("submit", () => {
-      openHaxballURL(getByDataHook("input-url").value);
-    });
-  });
-
-  insertAfter(getByDataHook("join"), btn);
-}
-
-// =============================================================================
-// CSS — Aplicação do stylesheet e fonte
-// =============================================================================
-
-stylesheet.innerHTML += CUSTOM_CSS;
-
-if (typeof CUSTOM_FONT !== "undefined") {
-  let fontLink = document.createElement("link");
-  fontLink.href = CUSTOM_FONT.url;
-  fontLink.rel  = "stylesheet";
-  gameFrame.document.head.appendChild(fontLink);
-  stylesheet.innerHTML += `* { font-family: '${CUSTOM_FONT.name}', ${CUSTOM_FONT.type} !important; }`;
-}
-
-// =============================================================================
-// UI — Botão de Senha
-// =============================================================================
-
-function createPasswordButton() {
-  if (typeof PASSWORD_BUTTON === "undefined") return;
-
-  let btn = document.createElement("button");
-  btn.setAttribute("data-hook", "password-btn");
-  btn.style.fontSize = "1em";
-  btn.style.padding  = "5px 0";
-  btn.classList.add("admin-only");
-
-  let icon = document.createElement("i");
-  icon.classList.add("icon-lock");
-  btn.appendChild(icon);
-  btn.innerHTML += "Password";
-
-  insertAfter(getByDataHook("reset-all-btn"), btn);
-  btn.addEventListener("click", createPasswordPopup);
-}
-
-function createPasswordPopup() {
-  const popup   = document.createElement("div");
-  popup.classList.add("dialog", "basic-dialog", "admin-only");
-
-  const title   = document.createElement("h1");
-  title.textContent = "Change password";
-
-  const desc    = document.createElement("p");
-  desc.textContent  = "Enter the new password or leave the input empty to set the room as public";
-
-  const input   = document.createElement("input");
-  input.setAttribute("data-hook", "pass-input");
-  input.setAttribute("type", "text");
-  input.setAttribute("maxlength", "30");
-  input.setAttribute("placeholder", "No password");
-
-  const buttons = document.createElement("div");
-  buttons.classList.add("buttons");
-
-  const closeBtn = document.createElement("button");
-  closeBtn.setAttribute("data-hook", "close-pass");
-  closeBtn.textContent = "Close";
-
-  const setBtn   = document.createElement("button");
-  setBtn.setAttribute("data-hook", "set-pass");
-  setBtn.textContent = "Set password";
-
-  buttons.appendChild(closeBtn);
-  buttons.appendChild(setBtn);
-  popup.appendChild(title);
-  popup.appendChild(desc);
-  popup.appendChild(input);
-  popup.appendChild(buttons);
-
-  const popupsContainer = getByDataHook("popups");
-  popupsContainer.appendChild(popup);
-  popupsContainer.style.display = "flex";
-
-  input.onkeydown   = (e) => e.stopPropagation();
-  closeBtn.onclick  = () => { popup.remove(); popupsContainer.style.display = "none"; };
-  setBtn.onclick    = () => {
-    input.value === ""
-      ? prefabMessage("/clear_password")
-      : prefabMessage("/set_password " + input.value);
-    popup.remove();
-    popupsContainer.style.display = "none";
-  };
-}
-
-// =============================================================================
-// UI — Botão Reset Settings
-// =============================================================================
-
-function createResetSettingsButton() {
-  const section = getByDataHook("miscsec");
-  if (getByDataHook("reset-all-btn")) return;
-
-  let btn = document.createElement("button");
-  btn.setAttribute("data-hook", "reset-all-btn");
-  btn.innerHTML = "Reset all";
-
-  section.appendChild(document.createElement("br"));
-  section.appendChild(btn);
-  section.innerHTML += "<p style='font-size: small; font-style: italic; opacity: 0.5;'>You'll see changes next <br>time you open the app.";
-
-  getByDataHook("reset-all-btn").addEventListener("click", () => localStorage.clear());
-}
-
-// =============================================================================
-// UI — Admin: Sistema de delegação para mover jogadores
-// =============================================================================
-
-function setupAdminDelegation() {
-  if (typeof ROOM_ADMIN_SETTINGS === "undefined") return;
-
-  const setUpContainer = getByDataHook("set-up");
-  if (!setUpContainer) return;
-
-  // Usar data-hook como flag para evitar duplicação
-  setUpContainer.setAttribute("data-hook", "admin-delegation");
-
-  setUpContainer.addEventListener(
-    "touchstart",
-    (e) => {
-      const playerItem = e.target.closest(".player-list-item");
-      if (!playerItem) return;
-      
-      playerItem._touchStart = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-        time: Date.now(),
-      };
-    },
-    false
-  );
-
-  setUpContainer.addEventListener(
-    "touchend",
-    (e) => {
-      const playerItem = e.target.closest(".player-list-item");
-      if (!playerItem || !playerItem._touchStart) return;
-
-      const currentX = e.changedTouches[0].clientX;
-      const currentY = e.changedTouches[0].clientY;
-      const distance = Math.sqrt(
-        Math.pow(currentX - playerItem._touchStart.x, 2) +
-          Math.pow(currentY - playerItem._touchStart.y, 2)
-      );
-      const duration = Date.now() - playerItem._touchStart.time;
-
-      // Tap rápido sem movimento (< 250ms e < 10px) = abre menu de mover
-      if (duration < 250 && distance < 10) {
-        e.stopPropagation();
-        e.preventDefault();
-        const playerName = playerItem.querySelector(
-          '[data-hook="name"]'
-        )?.textContent;
-        if (playerName) {
-          showMovePlayerMenu(playerName);
+function searchRoomlist() {
+    const searchValue = getByDataHook('search').value.toLowerCase();
+    const rows = body.querySelectorAll('tr');
+    rows.forEach(row => {
+        const spanName = row.querySelector('span[data-hook="name"]');
+        if (spanName && !spanName.textContent.toLowerCase().includes(searchValue)) {
+            row.style.display = 'none'
+        } else {
+            row.removeAttribute("style");
         }
-      }
-
-      playerItem._touchStart = null;
-    },
-    false
-  );
+    });
 }
 
-function showMovePlayerMenu(playerName) {
-  // Limpar qualquer modal anterior
-  const existingModal = body.querySelector('[data-hook="move-modal"]');
-  if (existingModal) {
-    existingModal.remove();
-    const popupsContainer = getByDataHook("popups");
-    if (popupsContainer && popupsContainer.children.length === 0) {
-      popupsContainer.style.display = "none";
-    }
-  }
+///////////////////////////////////////// UI /////////////////////////////////////////
 
-  // Criar novo modal
-  const modal = document.createElement("div");
-  modal.classList.add("dialog", "basic-dialog", "admin-only");
-  modal.setAttribute("data-hook", "move-modal");
-
-  const title = document.createElement("h1");
-  title.textContent = `Move: ${playerName}`;
-
-  const buttons = document.createElement("div");
-  buttons.classList.add("buttons");
-  buttons.style.flexDirection = "column";
-  buttons.style.gap = "8px";
-
-  // Botão Spectator
-  const specBtn = document.createElement("button");
-  specBtn.textContent = "Spectators";
-  specBtn.style.width = "100%";
-  specBtn.onclick = () => {
-    prefabMessage(`/move ${playerName} spec`);
-    modal.remove();
-    const popupsContainer = getByDataHook("popups");
-    if (popupsContainer && popupsContainer.children.length === 0) {
-      popupsContainer.style.display = "none";
-    }
-  };
-
-  // Botão Blue
-  const blueBtn = document.createElement("button");
-  blueBtn.textContent = "Blue Team";
-  blueBtn.style.width = "100%";
-  blueBtn.onclick = () => {
-    prefabMessage(`/move ${playerName} blue`);
-    modal.remove();
-    const popupsContainer = getByDataHook("popups");
-    if (popupsContainer && popupsContainer.children.length === 0) {
-      popupsContainer.style.display = "none";
-    }
-  };
-
-  // Botão Red
-  const redBtn = document.createElement("button");
-  redBtn.textContent = "Red Team";
-  redBtn.style.width = "100%";
-  redBtn.onclick = () => {
-    prefabMessage(`/move ${playerName} red`);
-    modal.remove();
-    const popupsContainer = getByDataHook("popups");
-    if (popupsContainer && popupsContainer.children.length === 0) {
-      popupsContainer.style.display = "none";
-    }
-  };
-
-  // Botão Fechar
-  const closeBtn = document.createElement("button");
-  closeBtn.textContent = "Close";
-  closeBtn.style.width = "100%";
-  closeBtn.style.marginTop = "8px";
-  closeBtn.onclick = () => {
-    modal.remove();
-    const popupsContainer = getByDataHook("popups");
-    if (popupsContainer && popupsContainer.children.length === 0) {
-      popupsContainer.style.display = "none";
-    }
-  };
-
-  buttons.appendChild(specBtn);
-  buttons.appendChild(blueBtn);
-  buttons.appendChild(redBtn);
-  buttons.appendChild(closeBtn);
-
-  modal.appendChild(title);
-  modal.appendChild(buttons);
-
-  const popupsContainer = getByDataHook("popups");
-  popupsContainer.appendChild(modal);
-  popupsContainer.style.display = "flex";
+function setupCountryFilter() {
+    countryFilterHandler.innerHTML = "";
+    countryFilterHandler.name = "stylesheet";
+    gameFrame.document.head.appendChild(countryFilterHandler);
 }
 
-// =============================================================================
-// UI — Busca de Salas
-// =============================================================================
+function setupCopyright() {
+    copyrightHandler.setAttribute("data-hook", "copyright");
+    copyrightHandler.setAttribute("style", "text-align:center;position:absolute;bottom:15px;width:100%; display: block");
+    copyrightHandler.innerHTML = '2024 Vixel Dev. Original game by Mario Carbajal (@basro)';
+    document.body.appendChild(copyrightHandler);
+}
 
-function filterRooms(query) {
-  if (typeof ROOM_SEARCH === "undefined") return;
+function copyright(s) {
+    copyrightHandler.style.display = s ? "block" : "none";
+}
 
-  const lowerQuery = query.toLowerCase();
-  body.querySelectorAll("tr").forEach((row) => {
-    const nameEl = row.querySelector('span[data-hook="name"]');
-    if (nameEl && !nameEl.textContent.toLowerCase().includes(lowerQuery)) {
-      row.style.display = "none";
-    } else {
-      row.removeAttribute("style");
+function updateUI() {
+    if (body.querySelector('.choose-nickname-view')) {
+        //Chose nickname
+        showControls(false);
+        copyright(true);
+        console.log("PAGE_LOADED")
     }
-  });
+    if (body.querySelector('.roomlist-view')) {
+        //Roomlist
+        copyright(false);
+        firstTime = true;
+        if (!getByDataHook('search')) createSearchbar();
+        if (!getByDataHook('url-room')) createURLButton();
+        if (!getByDataHook('fil-cou')) createCountryButton();
+        if (!getByDataHook('aboutbtn')) createAboutButton();
+        if (getByDataHook('count')) getByDataHook('count').remove();
+        showControls(false);
+    } else if (body.querySelector('.create-room-view')) {
+        //Create room
+        copyright(true);
+        showControls(false);
+    } else if (body.querySelector('.settings-view')) {
+        //Settings
+        copyright(false);
+        if (inputOptionsHandler.getAttribute("hidden") != null) {
+            showControls(false);
+        }
+        try {
+            const videoSec = getByDataHook('videosec')
+            if (videoSec.children.length == 10) {
+                videoSec.lastChild.remove();
+                videoSec.lastChild.remove();
+                videoSec.lastChild.remove();
+            }
+        } catch {}
+        if (!getByDataHook('newinputbtn')) createInputButton();
+        canResetJoystick = true;
+    } else if (body.querySelector('.g-recaptcha-response')) {
+        //Captha
+        copyright(false);
+        showControls(false);
+        resetJoystick();
+        canResetJoystick = true;
+    } else if (body.querySelector('.game-view') && !body.querySelector('.room-view')) {
+        //In game
+        if (canResetJoystick) {
+            copyright(false);
+            showControls(true);
+            setupGameUI();
+            resetJoystick();
+            canResetJoystick = false;
+        }
+    } else if (body.querySelector('.game-view') && !body.querySelector('.room-link-view')) {
+        //Room admin
+        copyright(false);
+        showControls(false);
+        if (!getByDataHook('store')) createStoreButton();
+        setupGameUI();
+        resetJoystick();
+        canResetJoystick = true;
+    } else if (body.querySelector('.room-link-view')) {
+        showControls(false);
+        if (!getByDataHook('share')) createShareButton();
+        canResetJoystick = true;
+    }
+}
+
+function createInputButton() {
+    var el = getByDataHook('inputbtn');
+    var elClone = el.cloneNode(true);
+    elClone.setAttribute("data-hook", "newinputbtn")
+    elClone.addEventListener("click", function() {
+        showControls(true);
+        inputOptionsHandler.removeAttribute("hidden")
+        resetJoystick();
+    });
+    el.parentNode.replaceChild(elClone, el);
+}
+
+function createShareButton() {
+    let share = document.createElement("button");
+    share.setAttribute("data-hook", "share");
+    share.innerHTML = 'Share';
+    insertAfter(getByDataHook('copy'), share);
+    share.addEventListener("click", function() {
+        console.log("SHARE_MESSAGE🎮⚽️ Join my Haxball Mobile room by copying and pasting the following link: " + getByDataHook('link').value)
+    });
+}
+
+function createStoreButton() {
+    let store = document.createElement("button");
+    store.setAttribute("data-hook", "store");
+    store.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 407 407" fill="white" style="height:0.85em; width: auto"><path d="M402 84 323 5c-3-3-7-5-12-5H17C8 0 0 8 0 17v373c0 9 8 17 17 17h373c9 0 17-8 17-17V96c0-4-2-9-5-12zm-101 80H67V39h234v125z"></path><path d="M214 148h43c3 0 6-2 6-6V60c0-4-3-6-6-6h-43c-3 0-6 2-6 6v82c0 4 3 6 6 6z"></path></svg> Store';
+    insertAfter(getByDataHook('rec-btn'), store);
+    store.addEventListener("click", function() {
+        prefabMessage("/store")
+    });
 }
 
 function createSearchbar() {
-  if (typeof ROOM_SEARCH === "undefined") return;
+    const inputContainer = document.createElement("div");
+    inputContainer.className = "label-input";
+    inputContainer.style.backgroundColor = "transparent";
 
-  const wrapper = document.createElement("div");
-  wrapper.className = "label-input";
-  wrapper.style.cssText = "background-color: transparent; padding: 0;";
-  wrapper.innerHTML = '<label>Search a room:</label><br><input data-hook="search" placeholder="Type here..." type="text">';
+    inputContainer.innerHTML = '<label>Search a room:</label><input data-hook="search" type="text">';
 
-  insertAfter(body.querySelector("div.dialog > p:nth-child(2)"), wrapper);
+    const dialog = body.querySelector("div.dialog");
+    const secondParagraph = dialog.querySelector("p:nth-child(2)");
 
-  const input = wrapper.querySelector("input");
-  input.addEventListener("input", () => filterRooms(input.value));
+    insertAfter(secondParagraph, inputContainer);
+
+    secondParagraph.innerHTML = pickRandom(tips);
+
+    const input = inputContainer.querySelector('input');
+    input.addEventListener("input", searchRoomlist);
 }
 
-// =============================================================================
-// UI — Logo customizado
-// =============================================================================
+function createURLButton() {
+    let button = document.createElement("button");
+    button.setAttribute("data-hook", "url-room");
+    button.innerHTML = '<i class="icon-link"></i><div>URL Room</div>';
 
-if (typeof CUSTOM_LOGO !== "undefined") {
-  stylesheet.innerHTML += `
-    .choose-nickname-view > img {
-      content: url("${CUSTOM_LOGO.url}");
-      height: ${CUSTOM_LOGO.height || "auto"};
-      width: ${CUSTOM_LOGO.width   || "auto"};
+    button.addEventListener("click", function() {
+        if (!body.querySelector('[data-hook="input-url"]')) {
+            let urlForm = document.createElement("form");
+            urlForm.action = "javascript:void(0);";
+            urlForm.innerHTML = '<div class="label-input" style="background-color: transparent"><label>URL:</label><input data-hook="input-url" type="url"></div>';
+            insertAfter(body.querySelector("div.dialog > p:nth-child(2)"), urlForm)
+            getByDataHook('search').parentNode.style.display = "none";
+            getByDataHook('input-url').focus();
+            getByDataHook('input-url').addEventListener('blur', function() {
+                getByDataHook('search').parentNode.style.display = "flex";
+                urlForm.remove()
+            })
+            urlForm.addEventListener('submit', function() { openHaxballURL(getByDataHook('input-url').value) })
+        }
+    });
+    insertAfter(getByDataHook('join'), button)
+}
+
+function createAboutButton() {
+    let button = document.createElement("button");
+    button.setAttribute("data-hook", "aboutbtn");
+    button.innerHTML = '<i class="icon-attention"></i><div>About us</div>';
+
+    button.addEventListener("click", function() {
+        aboutHandler.style.display = 'flex';
+    });
+    insertAfter(body.querySelector(".buttons .spacer"), button)
+}
+
+function filterCountries(button) {
+    const geoData = localStorage.getItem('geo_override') || localStorage.getItem('geo');
+
+    if (geoData) {
+        const parsedData = JSON.parse(geoData);
+
+        const code = parsedData['code'];
+
+        const iconClass = button.lastChild.getAttribute("class");
+
+        if (iconClass === "icon-cancel") {
+            button.lastChild.setAttribute("class", "icon-ok");
+            countryFilterHandler.innerHTML = ""
+        } else {
+            button.lastChild.setAttribute("class", "icon-cancel");
+            countryFilterHandler.innerHTML = "tr:not(:has(div.f-" + code + ")){display: none;}";
+        }
+        getByDataHook('listscroll').scrollTop = 0;
     }
-  `;
 }
 
-// =============================================================================
-// CAMISAS — Configurações de times
-// =============================================================================
+function createCountryButton() {
+    let button = document.createElement("span");
+    button.setAttribute("class", "bool");
+    button.setAttribute("data-hook", "fil-cou");
+    button.innerHTML = 'Show other countries <i class="icon-ok"></i>';
+    countryFilterHandler.innerHTML = "";
+    button.addEventListener("click", function() { filterCountries(button) });
 
-const blueShirts = {
-  arg: "0 000000 FFFFFF 0D8ED9 FFFFFF",
-  fra: "0 E8B320 0F0D4D",
-  gbr: "90 151AA1 151AA1 FFFFFF FFFFFF",
-  ita: "180 D4BA91 2D4E9D",
-  hvr: "0 3A33FF EBE6FF DBDBDB FFFFFF",
-  jpn: "30 F2F2F2 1930FF 0066FF 101FA3",
-};
-
-const redShirts = {
-  bel: "0 000000 FF150D BD100A FF150D",
-  bra: "0 167010 FFFF26 F7FF19 FFFF26",
-  prt: "-60 FFCB21 0D3808 FF0D0D",
-  nld: "0 0D0D40 FF9124 FFAE0D FF9124",
-  esp: "0 EBC015 BF0000",
-  mar: "FFFFFF 046317 FF0000 FF0000",
-};
-
-function getNextShirt(team) {
-  const shirts = team === "red" ? redShirts : blueShirts;
-  const keys   = Object.keys(shirts);
-
-  getNextShirt.currentIndex        = getNextShirt.currentIndex || {};
-  getNextShirt.currentIndex[team]  = getNextShirt.currentIndex[team] || 0;
-
-  const idx = getNextShirt.currentIndex[team];
-  getNextShirt.currentIndex[team] = (idx + 1) % keys.length;
-
-  return shirts[keys[idx]];
+    body.querySelector('.filters').prepend(button);
 }
 
-function pickShirt(e) {
-  if (typeof SHIRTS_BUTTON === "undefined") return;
-  const team = e.target.hasAttribute("red") ? "red" : "blue";
-  prefabMessage(`/colors ${team} ${getNextShirt(team)}`);
+function setupGameUI() {
+    const chat = body.querySelector('.chatbox-view');
+
+    if (!getByDataHook('chat-toggle')) {
+        const button = document.createElement("button");
+        button.setAttribute("data-hook", "chat-toggle");
+        button.setAttribute("style", "display: flex; justify-content: center; align-items: center;");
+        button.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 20 20"><path fill="white" d="M5.8 12.2V6H2C.9 6 0 6.9 0 8v6c0 1.1.9 2 2 2h1v3l3-3h5c1.1 0 2-.9 2-2v-1.82a.943.943 0 0 1-.2.021h-7zM18 1H9c-1.1 0-2 .9-2 2v8h7l3 3v-3h1c1.1 0 2-.899 2-2V3c0-1.1-.9-2-2-2"/></svg>';
+        button.addEventListener("click", chatToggle);
+        body.querySelector('.sound-button-container').parentNode.prepend(button);
+    }
+
+    if (firstTime) {
+        body.querySelector('.drag').remove();
+        const statsViewContainer = body.querySelector('.stats-view-container');
+        statsViewContainer.style.cssText = "display: none;";
+        getByDataHook('log-contents').firstChild.remove();
+        getByDataHook('menu').innerHTML = '<i class="icon-menu"></i>';
+        const inputStyle = chat.querySelector('.input').style;
+        inputStyle.display = 'none';
+        chat.querySelector('input').addEventListener('blur', function() { inputStyle.display = 'none'; });
+        firstTime = false;
+    }
 }
 
-function createShirtButtons() {
-  const redBtn  = document.createElement("button");
-  redBtn.setAttribute("data-hook", "shirt-btn");
-  redBtn.classList.add("admin-only");
-  redBtn.setAttribute("red", "");
-  redBtn.onclick = pickShirt;
+///////////////////////////////////////// CHAT /////////////////////////////////////////
 
-  const blueBtn = document.createElement("button");
-  blueBtn.setAttribute("data-hook", "shirt-btn");
-  blueBtn.classList.add("admin-only");
-  blueBtn.setAttribute("blue", "");
-  blueBtn.onclick = pickShirt;
+function prefabMessage(msg) {
+    const chatbox = body.querySelector('.chatbox-view');
+    const input = chatbox.querySelector('input');
+    input.focus();
+    input.value = msg;
 
-  body.querySelector(".t-red  > .buttons").appendChild(redBtn);
-  body.querySelector(".t-blue > .buttons").appendChild(blueBtn);
+    input.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+        keyCode: 13,
+        which: 13,
+    }));
 }
 
-// =============================================================================
-// UI — Botão Store
-// =============================================================================
 
-function createStoreButton() {
-  if (typeof STORE_BUTTON === "undefined") return;
+function updatedChat() {
+    const log = getByDataHook('log');
+    const children = log.firstChild.children;
+    const maxChildren = 5;
 
-  let btn = document.createElement("button");
-  btn.setAttribute("data-hook", "store");
-  btn.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 407 407"
-         fill="white" style="height:0.85em; width: auto">
-      <path d="M402 84 323 5c-3-3-7-5-12-5H17C8 0 0 8 0 17v373c0 9 8 17 17 17h373c9 0 17-8 17-17V96c0-4-2-9-5-12zm-101 80H67V39h234v125z"/>
-      <path d="M214 148h43c3 0 6-2 6-6V60c0-4-3-6-6-6h-43c-3 0-6 2-6 6v82c0 4 3 6 6 6z"/>
-    </svg> Store
-  `;
+    if (lastMessage !== log.firstChild.lastChild) {
+        if (children.length > maxChildren) {
+            for (let i = 0; i < children.length - maxChildren; i++) {
+                children[i].style.display = "none";
+            }
+        }
 
-  insertAfter(getByDataHook("rec-btn"), btn);
-  btn.addEventListener("click", () => prefabMessage("/store"));
+        const lastChild = log.firstChild.lastChild;
+        const savedColor = lastChild.style.color;
+        lastChild.style.opacity = 1;
+        setTimeout(() => {
+            lastChild.classList.add("fade-out");
+            lastChild.style.opacity = "";
+            if (savedColor) lastChild.style.color = savedColor;
+        }, 500);
+        lastMessage = lastChild;
+    }
+    log.scrollTop = 0;
 }
 
-// =============================================================================
-// FPS — Toggle de exibição
-// =============================================================================
+function chatToggle() {
+    const chat = body.querySelector('.chatbox-view');
+    const inputStyle = chat.querySelector('.input').style;
 
-function handleFPSText() {
-  const showFPS   = localStorage.getItem("show_fps") || 1;
-  const statsView = body.querySelector(".stats-view");
+    inputStyle.display = inputStyle.display === 'none' ? 'block' : 'none';
+    if (inputStyle.display == 'block') {
+        chat.querySelector('input').focus();
+    }
+}
 
-  statsView.style = showFPS == 1 ? "" : "opacity: 0 !important;";
+///////////////////////////////////////// CONTROLS /////////////////////////////////////////
 
-  statsView.ontouchstart = (e) => {
-    if ((localStorage.getItem("show_fps") || 1) == 1) {
-      localStorage.setItem("show_fps", 0);
-      e.target.style = "opacity: 0 !important;";
+function showControls(v) {
+    if (v) {
+        joystick.setAttribute("view", "visible");
+        kickButton.setAttribute("view", "visible");
     } else {
-      localStorage.setItem("show_fps", 1);
-      e.target.style = "";
+        joystick.setAttribute("view", "hidden");
+        kickButton.setAttribute("view", "hidden");
     }
-  };
 }
 
-// =============================================================================
-// JOYSTICK VIRTUAL — Movimento do jogador
-// =============================================================================
+function updateControlsSettingsNumbers() {
+    let inputs = inputOptionsHandler.querySelectorAll(".option-row");
+    inputs[0].children[1].innerHTML = inputs[0].children[2].value;
+    inputs[1].children[1].innerHTML = inputs[1].children[2].value;
+    inputs[2].children[1].innerHTML = inputs[2].children[2].value;
+}
 
-if (typeof VIRTUAL_JOYSTICK !== "undefined") {
-  const joystickEl   = document.createElement("div");
-  const joystickPanel = document.createElement("div");
-  const kickPanel    = document.createElement("div");
-  const stickEl      = document.createElement("div");
+function onControlsSettingsInput() {
+    let inputs = inputOptionsHandler.querySelectorAll(".option-row");
+    updateControlsOptions(inputs[0].children[2].value, inputs[1].children[2].value, inputs[2].children[2].value)
+}
 
-  joystickEl.setAttribute("id",    "joystick");
-  joystickPanel.setAttribute("id", "joystick-panel");
-  kickPanel.setAttribute("id",     "kick-panel");
-  stickEl.setAttribute("id",       "stick");
-
-  joystickEl.style.visibility = "hidden";
-
-  document.body.appendChild(kickPanel);
-  document.body.appendChild(joystickPanel);
-  joystickPanel.appendChild(joystickEl);
-  joystickEl.appendChild(stickEl);
-
-  // --- Estilos do Joystick ---
-  let joystickStylesheet = document.createElement("style");
-  joystickStylesheet.innerHTML = `
-    #joystick,
-    #stick {
-      touch-action: none;
-      background-color: #c2c2c255;
-      box-shadow: 6px 6px 10px 0 #a5abb133, -5px -5px 9px 0 #a5abb133;
-      color: #dedede55;
-      font-weight: bolder;
-      font-size: 1.5rem;
-      border-radius: 50%;
+function updateControlsOptions(w, m, o, f = false) {
+    if (f) {
+        let inputs = inputOptionsHandler.querySelectorAll(".option-row");
+        inputs[0].children[2].value = w;
+        inputs[1].children[2].value = m;
+        inputs[2].children[2].value = o;
     }
+    localStorage.setItem("controls", JSON.stringify([w, m, o]))
+    controlsHandler.innerHTML = constrolsStyleBase.replace(/CONTROLS_WIDTH/g, w.toString()).replace(/CONTROLS_MARGIN/g, m.toString()).replace(/CONTROLS_OPACITY/g, o.toString()).replace(/KICK_OPACITY/g, (o / 2).toString());
+    updateControlsSettingsNumbers();
+    resetJoystick();
+}
 
-    #joystick {
-      width: var(--joystick-size);
-      height: var(--joystick-size);
-      opacity: var(--joystick-opacity);
-      position: absolute;
-      left: var(--joystick-margin);
-      bottom: var(--joystick-margin);
+function handleTouchStart(e) {
+    isTouching = true;
+    updateJoystick(e.touches[0]);
+}
+
+function handleTouchMove(e) {
+    if (isTouching) {
+        updateJoystick(e.touches[0]);
     }
+}
 
-    #joystick-panel {
-      width: 45%;
-      height: 70%;
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      display: none;
-    }
+function handleTouchEnd() {
+    isTouching = false;
+    resetJoystick();
+}
 
-    #kick-panel {
-      width: 45%;
-      height: 70%;
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      display: none;
-    }
-
-    #stick {
-      width: calc(var(--joystick-size) * .45);
-      height: calc(var(--joystick-size) * .45);
-      position: absolute;
-      top: calc(50% - var(--joystick-size) * .45 / 2);
-      left: calc(50% - var(--joystick-size) * .45 / 2);
-      transform: translate(0%, 0%);
-    }
-  `;
-
-  let joystickRootStylesheet = document.createElement("style");
-  document.head.appendChild(joystickStylesheet);
-  document.head.appendChild(joystickRootStylesheet);
-
-  let isJoystickDragging = false;
-
-  const PWM_TICK = (1 / 40) * 1000;
-  let pwmRatios  = { W: 0, A: 0, S: 0, D: 0 };
-
-  // --- Drag Start ---
-  function joystickStartDrag(e) {
-    isJoystickDragging = true;
-
-    if ((localStorage.getItem("input_fixed") || 0) == 0) {
-      const rect = joystickEl.getBoundingClientRect();
-      let ox = e.touches[0].clientX - rect.left - joystickEl.offsetWidth  / 2;
-      let oy = e.touches[0].clientY - rect.top  - joystickEl.offsetHeight / 2;
-      joystickEl.style.transform = `translate(${ox}px, ${oy}px)`;
-    }
-
-    joystickEl.style.visibility = "visible";
-    e.preventDefault();
-  }
-
-  // --- Drag End ---
-  function joystickEndDrag(e) {
-    isJoystickDragging = false;
-
-    if ((localStorage.getItem("input_fixed") || 0) == 0) {
-      joystickEl.style.transform  = "";
-      joystickEl.style.visibility = "hidden";
-    }
-
-    resetJoystickStick();
-  }
-
-  // --- Stick Move ---
-  function joystickMoveStick(e) {
-    if (!isJoystickDragging) return;
-
-    const rect = joystickEl.getBoundingClientRect();
-    let x = e.clientX - rect.left;
-    let y = e.clientY - rect.top;
-
-    if (e.type === "touchmove") {
-      x = e.touches[0].clientX - rect.left;
-      y = e.touches[0].clientY - rect.top;
-    }
-
-    const cx     = joystickEl.offsetWidth  / 2;
-    const cy     = joystickEl.offsetHeight / 2;
-    const dx     = x - cx;
-    const dy     = y - cy;
-    const dist   = Math.sqrt(dx ** 2 + dy ** 2);
-    const maxR   = Math.min(cx, cy);
-    const ratio  = Math.min(1, dist / maxR);
-    let   angle  = Math.atan2(dy, dx) * (180 / Math.PI);
-
-    if (angle < 0) angle += 360;
-
-    if (ratio > 0.25) {
-      switch (Math.round(angle / 45) % 8) {
-        case 0: changeJoystickDirection("d");  break;
-        case 1: changeJoystickDirection("sd"); break;
-        case 2: changeJoystickDirection("s");  break;
-        case 3: changeJoystickDirection("sa"); break;
-        case 4: changeJoystickDirection("a");  break;
-        case 5: changeJoystickDirection("wa"); break;
-        case 6: changeJoystickDirection("w");  break;
-        case 7: changeJoystickDirection("wd"); break;
-      }
-    } else {
-      changeJoystickDirection("");
-    }
-
-    const clampedDx = (dx / dist) * ratio * maxR;
-    const clampedDy = (dy / dist) * ratio * maxR;
-    stickEl.style.transition = "none";
-    stickEl.style.transform  = `translate(${clampedDx}px, ${clampedDy}px)`;
-  }
-
-  // --- Direção ---
-  function changeJoystickDirection(keys) {
-    const active = { w: false, a: false, s: false, d: false };
-    for (let k of keys) active[k] = true;
+function kick(str) {
     try {
-      emulateKey("KeyW", active.w);
-      emulateKey("KeyA", active.a);
-      emulateKey("KeyS", active.s);
-      emulateKey("KeyD", active.d);
+        gameFrame.document.dispatchEvent(new KeyboardEvent(str, { code: "KeyX" }));
     } catch {}
-  }
-
-  function resetJoystickStick() {
-    stickEl.style.transition = "transform 0.1s ease-out";
-    stickEl.style.transform  = "translate(0%, 0%)";
-    pwmRatios = { W: 0, A: 0, S: 0, D: 0 };
-    changeJoystickDirection("");
-  }
-
-  // --- PWM Tick ---
-  function joystickTick(key) {
-    const pwmEnabled = (localStorage.getItem("input_pwm") || 0) == 1;
-    const onTime     = PWM_TICK * pwmRatios[key];
-    const offTime    = PWM_TICK - onTime;
-
-    if (pwmRatios[key] > 0.1 && pwmEnabled) emulateKey("Key" + key, true);
-
-    setTimeout(() => {
-      if (pwmRatios[key] < 0.85 && pwmEnabled) emulateKey("Key" + key, false);
-      setTimeout(() => joystickTick(key), offTime);
-    }, onTime);
-  }
-
-  // --- Emulação de Teclas ---
-  function emulateKey(code, pressed) {
-    const eventType = pressed ? "keydown" : "keyup";
-    gameFrame.document.dispatchEvent(new KeyboardEvent(eventType, { code }));
-  }
-
-  // --- Chute ---
-  function startKick() { emulateKey("KeyX", true);  }
-  function endKick()   { emulateKey("KeyX", false); }
-
-  // --- Exibir / Ocultar Controles ---
-  function showControls(visible, keepChat = false) {
-    if (typeof VIRTUAL_JOYSTICK === "undefined") return;
-
-    if (visible) {
-      const isFixed = localStorage.getItem("input_fixed") || 0;
-      joystickPanel.style.display = "block";
-      kickPanel.style.display     = "block";
-      document.body.querySelector("#chat-joystick-panel").style.display = "block";
-
-      if (isFixed == 1) {
-        joystickEl.style.transform  = "";
-        joystickEl.style.visibility = "visible";
-      }
-
-      reloadJoystickRoot();
-    } else {
-      joystickPanel.style.display   = "none";
-      kickPanel.style.display       = "none";
-      joystickEl.style.transform    = "";
-      joystickEl.style.visibility   = "hidden";
-
-      if (!keepChat) {
-        document.body.querySelector("#chat-joystick-panel").style.display = "none";
-      }
-    }
-  }
-
-  // =============================================================================
-  // CONFIGURAÇÕES — Joystick Settings na tela de Settings
-  // =============================================================================
-
-  function createInputSettings() {
-    const section = getByDataHook("inputsec");
-
-    const opacity = localStorage.getItem("input_opacity") || 0.8;
-    const size    = localStorage.getItem("input_size")    || 40;
-    const fixed   = localStorage.getItem("input_fixed")   || 0;
-    const margin  = localStorage.getItem("input_margin")  || 10;
-
-    // Opacity Row
-    const opacityRow   = document.createElement("div");
-    opacityRow.classList.add("option-row");
-    const opacityLabel = document.createElement("div");
-    opacityLabel.style.cssText = "margin-right: 10px; flex: 1; max-width: 115px;";
-    opacityLabel.textContent   = "Controls Opacity";
-    const opacityValue = document.createElement("div");
-    opacityValue.style.width   = "40px";
-    opacityValue.setAttribute("data-hook", "inputopacity-value");
-    const opacityRange = document.createElement("input");
-    opacityRange.classList.add("slider");
-    opacityRange.setAttribute("type", "range");
-    opacityRange.setAttribute("min", "0.25");
-    opacityRange.setAttribute("max", "1");
-    opacityRange.setAttribute("step", "0.01");
-    opacityRange.setAttribute("data-hook", "inputopacity-range");
-    opacityRange.onchange = inputOpacityChange;
-    opacityRange.oninput  = inputOpacityChange;
-    opacityRange.value    = opacity;
-    opacityValue.innerText = opacityRange.value;
-    opacityRow.appendChild(opacityLabel);
-    opacityRow.appendChild(opacityValue);
-    opacityRow.appendChild(opacityRange);
-
-    // Size Row
-    const sizeRow   = document.createElement("div");
-    sizeRow.classList.add("option-row");
-    const sizeLabel = document.createElement("div");
-    sizeLabel.style.cssText = "margin-right: 10px; flex: 1; max-width: 115px;";
-    sizeLabel.textContent   = "Joystick Size";
-    const sizeValue = document.createElement("div");
-    sizeValue.style.width   = "40px";
-    sizeValue.setAttribute("data-hook", "inputsize-value");
-    const sizeRange = document.createElement("input");
-    sizeRange.classList.add("slider");
-    sizeRange.setAttribute("type", "range");
-    sizeRange.setAttribute("min", "30");
-    sizeRange.setAttribute("max", "50");
-    sizeRange.setAttribute("step", "1");
-    sizeRange.setAttribute("data-hook", "inputsize-range");
-    sizeRange.onchange = inputSizeChange;
-    sizeRange.oninput  = inputSizeChange;
-    sizeRange.value    = size;
-    sizeValue.innerText = sizeRange.value;
-    sizeRow.appendChild(sizeLabel);
-    sizeRow.appendChild(sizeValue);
-    sizeRow.appendChild(sizeRange);
-
-    // Margin Row
-    const marginRow   = document.createElement("div");
-    marginRow.classList.add("option-row");
-    const marginLabel = document.createElement("div");
-    marginLabel.style.cssText = "margin-right: 10px; flex: 1; max-width: 115px;";
-    marginLabel.textContent   = "Joystick Margin";
-    const marginValue = document.createElement("div");
-    marginValue.style.width   = "40px";
-    marginValue.setAttribute("data-hook", "inputmargin-value");
-    const marginRange = document.createElement("input");
-    marginRange.classList.add("slider");
-    marginRange.setAttribute("type", "range");
-    marginRange.setAttribute("min", "0");
-    marginRange.setAttribute("max", "35");
-    marginRange.setAttribute("step", "1");
-    marginRange.setAttribute("data-hook", "inputmargin-range");
-    marginRange.onchange = inputMarginChange;
-    marginRange.oninput  = inputMarginChange;
-    marginRange.value    = margin;
-    marginValue.innerText = marginRange.value;
-    marginRow.appendChild(marginLabel);
-    marginRow.appendChild(marginValue);
-    marginRow.appendChild(marginRange);
-
-    // Fixed Toggle
-    const fixedToggle = document.createElement("div");
-    fixedToggle.classList.add("toggle");
-    const fixedIcon = document.createElement("i");
-
-    if (fixed == 1) {
-      fixedIcon.classList.add("icon-ok");
-      marginRow.style.display = "flex";
-    } else {
-      fixedIcon.classList.add("icon-cancel");
-      marginRow.style.display = "none";
-    }
-
-    fixedToggle.appendChild(fixedIcon);
-    fixedToggle.innerHTML += "Fixed Joystick";
-    fixedToggle.onclick = inputFixedChange;
-
-    section.appendChild(fixedToggle);
-    section.appendChild(marginRow);
-    section.appendChild(opacityRow);
-    section.appendChild(sizeRow);
-
-    reloadJoystickRoot();
-  }
-
-  function inputOpacityChange(e) {
-    localStorage.setItem("input_opacity", e.target.value);
-    e.target.parentNode.children[1].innerText = e.target.value;
-
-    if (e.type === "input") {
-      joystickPanel.style.display     = "block";
-      joystickEl.style.visibility     = "visible";
-      joystickEl.style.transform      = "";
-      chatJoystickPanel.style.display = "block";
-    } else {
-      joystickPanel.style.display     = "none";
-      joystickEl.style.visibility     = "hidden";
-      chatJoystickPanel.style.display = "none";
-    }
-
-    reloadJoystickRoot();
-  }
-
-  function inputMarginChange(e) {
-    localStorage.setItem("input_margin", e.target.value);
-    e.target.parentNode.children[1].innerText = e.target.value;
-
-    if (e.type === "input") {
-      joystickPanel.style.display = "block";
-      joystickEl.style.visibility = "visible";
-      joystickEl.style.transform  = "";
-    } else {
-      joystickPanel.style.display = "none";
-      joystickEl.style.visibility = "hidden";
-    }
-
-    reloadJoystickRoot();
-  }
-
-  function inputFixedChange(e) {
-    const icon = e.target.children[0];
-
-    if (icon.classList.contains("icon-cancel")) {
-      icon.classList.replace("icon-cancel", "icon-ok");
-      getByDataHook("inputmargin-range").parentNode.style.display = "flex";
-      localStorage.setItem("input_fixed", 1);
-    } else {
-      icon.classList.replace("icon-ok", "icon-cancel");
-      joystickEl.style.visibility = "hidden";
-      getByDataHook("inputmargin-range").parentNode.style.display = "none";
-      localStorage.setItem("input_fixed", 0);
-    }
-
-    reloadJoystickRoot();
-  }
-
-  function inputPWMChange(e) {
-    const icon = e.target.children[0];
-
-    if (icon.classList.contains("icon-cancel")) {
-      icon.classList.replace("icon-cancel", "icon-ok");
-      localStorage.setItem("input_pwm", 1);
-    } else {
-      icon.classList.replace("icon-ok", "icon-cancel");
-      joystickEl.style.visibility = "hidden";
-      localStorage.setItem("input_pwm", 0);
-    }
-
-    changeJoystickDirection("");
-  }
-
-  function inputSizeChange(e) {
-    localStorage.setItem("input_size", e.target.value);
-    e.target.parentNode.children[1].innerText = e.target.value;
-
-    if (e.type === "input") {
-      joystickPanel.style.display = "block";
-      joystickEl.style.visibility = "visible";
-      joystickEl.style.transform  = "";
-    } else {
-      joystickPanel.style.display = "none";
-      joystickEl.style.visibility = "hidden";
-    }
-
-    reloadJoystickRoot();
-  }
-
-  function reloadJoystickRoot() {
-    const opacity = localStorage.getItem("input_opacity") || 0.8;
-    const size    = localStorage.getItem("input_size")    || 40;
-    const margin  = (localStorage.getItem("input_fixed") || 0) == 1
-      ? (localStorage.getItem("input_margin") || 10)
-      : 0;
-
-    joystickRootStylesheet.innerHTML = `
-      :root {
-        --joystick-size: ${size}vh;
-        --joystick-margin: ${margin}vh;
-        --joystick-opacity: ${opacity};
-      }
-    `;
-  }
-
-  // --- Event Listeners do Joystick ---
-  joystickPanel.addEventListener("mousedown",  joystickStartDrag);
-  joystickPanel.addEventListener("touchstart", joystickStartDrag);
-  joystickPanel.addEventListener("mouseup",    joystickEndDrag);
-  joystickPanel.addEventListener("touchend",   joystickEndDrag);
-  joystickPanel.addEventListener("mousemove",  joystickMoveStick);
-  joystickPanel.addEventListener("touchmove",  joystickMoveStick);
-
-  kickPanel.addEventListener("mousedown",  startKick);
-  kickPanel.addEventListener("touchstart", startKick);
-  kickPanel.addEventListener("mouseup",    endKick);
-  kickPanel.addEventListener("touchend",   endKick);
 }
 
-// =============================================================================
-// UTILITÁRIOS
-// =============================================================================
+function updateJoystick(touch) {
+    const rect = joystick.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
 
-function getByDataHook(hook) {
-  return body.querySelector(`[data-hook="${hook}"]`);
+    const deltaX = touch.clientX - centerX;
+    const deltaY = touch.clientY - centerY;
+
+    const angle = Math.atan2(deltaY, deltaX);
+    const distance = Math.min(joystick.clientWidth / 2, Math.hypot(deltaX, deltaY));
+
+    const thumbX = centerX + distance * Math.cos(angle);
+    const thumbY = centerY + distance * Math.sin(angle);
+
+    thumb.style.left = thumbX - rect.left - thumb.clientWidth / 2 + 'px';
+    thumb.style.top = thumbY - rect.top - thumb.clientHeight / 2 + 'px';
+
+    const normalizedAngle = (angle + 2 * Math.PI) % (2 * Math.PI);
+    const angleInDegrees = (normalizedAngle * 180) / Math.PI;
+    const joystickValue = Math.round(angleInDegrees / 45) % 8;
+
+    switch (joystickValue) {
+        case 0:
+            emulateKeys("d")
+            break;
+        case 1:
+            emulateKeys("sd")
+            break;
+        case 2:
+            emulateKeys("s")
+            break;
+        case 3:
+            emulateKeys("sa")
+            break;
+        case 4:
+            emulateKeys("a")
+            break;
+        case 5:
+            emulateKeys("wa")
+            break;
+        case 6:
+            emulateKeys("w")
+            break;
+        case 7:
+            emulateKeys("wd")
+            break;
+        default:
+    }
 }
 
-function insertAfter(referenceNode, newNode) {
-  referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+function resetJoystick() {
+    const rect = joystick.getBoundingClientRect();
+    thumb.style.left = joystick.clientWidth / 2 - thumb.clientWidth / 2 + 'px';
+    thumb.style.top = joystick.clientHeight / 2 - thumb.clientHeight / 2 + 'px';
+    emulateKeys("")
 }
 
-function openHaxballURL(url) {
-  const code = url.replace(/^https?:\/\/(www\.)?haxball\.com\/play\?c=/, "");
-  if (code.length > 0) {
-    window.location.replace("https://www.haxball.com/play?c=" + code);
+function emulateKeys(str) {
+    let keys = { "w": "keyup", "a": "keyup", "s": "keyup", "d": "keyup" }
+    for (var i = 0; i < str.length; i++) {
+        var char = str[i];
+        keys[char] = "keydown";
+    }
+    try {
+        gameFrame.document.dispatchEvent(new KeyboardEvent(keys['w'], { code: "KeyW" }));
+        gameFrame.document.dispatchEvent(new KeyboardEvent(keys['a'], { code: "KeyA" }));
+        gameFrame.document.dispatchEvent(new KeyboardEvent(keys['s'], { code: "KeyS" }));
+        gameFrame.document.dispatchEvent(new KeyboardEvent(keys['d'], { code: "KeyD" }));
+    } catch {
+
+    }
+}
+
+function kick(str) {
+    try {
+        gameFrame.document.dispatchEvent(new KeyboardEvent(str, { code: "KeyX" }));
+    } catch {}
+}
+
+function setupControls() {
+    controlsHandler.name = "stylesheet";
+    document.head.appendChild(controlsHandler);
+
+    inputOptionsHandler.setAttribute("class", "input-options");
+    inputOptionsHandler.setAttribute("hidden", "")
+    inputOptionsHandler.innerHTML = '<div class="dialog settings-view" style="height:min-content"><h1>Controls</h1><button data-hook="closeinput" style="position:absolute;top:12px;right:10px">Back</button><div class="tabcontents"><div class="section selected"><div class="option-row"><div style="margin-right:10px;flex:1;min-width:60px">Size</div><div style="width:45px">0</div><input class="slider" type="range" min="10" max="30" step="0.01"></div><div class="option-row"><div style="margin-right:10px;flex:1;min-width:60px">Margin</div><div style="width:45px">0</div><input class="slider" type="range" min="0" max="15" step="0.01"></div><div class="option-row"><div style="margin-right:10px;flex:1;min-width:60px">Opacity</div><div style="width:45px">0</div><input class="slider" type="range" min="0.2" max="1" step="0.01"></div><br><button data-hook="resetinput">Reset</button></div></div></div>';
+    body.parentNode.appendChild(inputOptionsHandler);
+    body.parentNode.querySelector('[data-hook="closeinput"]').addEventListener("click", function() {
+        inputOptionsHandler.setAttribute("hidden", "");
+        showControls(false);
+    });
+    body.parentNode.querySelector('[data-hook="resetinput"]').addEventListener("click", function() {
+        updateControlsOptions(20, 5, 1, true)
+    });
+    inputOptionsHandler.querySelectorAll(".option-row")[0].children[2].addEventListener("input", onControlsSettingsInput)
+    inputOptionsHandler.querySelectorAll(".option-row")[1].children[2].addEventListener("input", onControlsSettingsInput)
+    inputOptionsHandler.querySelectorAll(".option-row")[2].children[2].addEventListener("input", onControlsSettingsInput)
+
+    joystick = document.createElement("div");
+    joystick.setAttribute("class", "neo rounded sizer");
+    joystick.setAttribute("view", "hidden");
+    joystick.setAttribute("float", "");
+    joystick.setAttribute("id", "joystick");
+    joystick.innerHTML = '<div id="thumb" class="rounded" float></div>';
+    joystick.addEventListener('touchstart', handleTouchStart);
+    joystick.addEventListener('touchmove', handleTouchMove);
+    joystick.addEventListener('touchend', handleTouchEnd);
+
+    kickButton = document.createElement("button");
+    kickButton.setAttribute("class", "neo rounded sizer");
+    kickButton.setAttribute("view", "hidden");
+    kickButton.setAttribute("float", "");
+    kickButton.setAttribute("id", "kick");
+    kickButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M290 49c-16 0-32 14-38 36-6 25 5 48 22 52 18 5 39-10 45-35 7-25-5-48-22-52l-7-1zM89 68 78 87c32 16 63 34 96 47l28-12c-40-16-77-34-113-54zm148 56c-48 26-98 42-154 62l9 16c52-16 111-33 161-56-7-6-12-13-16-22zm30 35c-22 11-46 20-71 29-20 45-28 95-37 140l-2 11-101-40-16 26 130 60 3-4 15-29a1672 1672 0 0 0 79-193zm-31 135-17 36c25 37 57 79 95 109l23-17c-36-40-73-85-101-128zm188 73a48 48 0 0 0-48 48 48 48 0 0 0 48 48 48 48 0 0 0 48-48 48 48 0 0 0-48-48z"/></svg>';
+    kickButton.addEventListener('touchstart', function() { kick('keydown') });
+    kickButton.addEventListener('touchend', function() { kick('keyup') });
+
+    document.body.appendChild(joystick);
+    document.body.appendChild(kickButton);
+
+    const controlOptions = JSON.parse(localStorage.getItem("controls"));
+    if (controlOptions === null) {
+        updateControlsOptions(20, 5, 1, true)
+    } else {
+        updateControlsOptions(controlOptions[0], controlOptions[1], controlOptions[2], true)
+    }
+
+    resetJoystick();
+}
+
+
+
+
+
+
+
+
+
+
+let previousDigitalStickState = "";
+let previousAnalogStickState = "";
+let isXButtonPressed = false;
+
+window.addEventListener("gamepadconnected", (event) => {
+  console.log("Gamepad connected:", event.gamepad);
+  checkGamepadState(event.gamepad);
+});
+
+window.addEventListener("gamepaddisconnected", (event) => {
+  console.log("Gamepad disconnected:", event.gamepad);
+});
+
+function checkGamepadState(gamepad) {
+  requestAnimationFrame(() => {
+    const axes = gamepad.axes;
+    const buttons = gamepad.buttons;
+
+    // Check the digital stick (assuming 8 positions)
+    const digitalStickState = getDigitalStickState(axes[0], axes[1]);
+    if (digitalStickState.changed) {
+      emulateKeys(digitalStickState.direction);
+      previousDigitalStickState = digitalStickState.direction;
+    }
+
+    // Check the analog stick (assuming 2 positions)
+    const analogStickState = getAnalogStickState(axes[2], axes[3]);
+    if (analogStickState.changed) {
+      emulateKeys(analogStickState.direction);
+      previousAnalogStickState = analogStickState.direction;
+    }
+
+    // Check if the X button is pressed
+    if ((buttons[0].pressed || buttons[2].pressed) && !isXButtonPressed) {
+      kick("keydown");
+      isXButtonPressed = true;
+    } else if (!buttons[0].pressed && !buttons[2].pressed) {
+      kick("keyup");
+      isXButtonPressed = false;
+    }
+
+    // Recursively check for changes
+    checkGamepadState(navigator.getGamepads()[gamepad.index]);
+  });
+}
+
+function getDigitalStickState(x, y) {
+  const threshold = 0.5;
+  const centerThreshold = 0.1; // Adjust this threshold for center detection
+
+  if (Math.abs(x) < centerThreshold && Math.abs(y) < centerThreshold) {
+    return { changed: previousDigitalStickState !== "Center", direction: "Center" };
   }
+
+  if (Math.abs(x) > threshold || Math.abs(y) > threshold) {
+    const direction = getDirection(x, y);
+    return { changed: direction !== previousDigitalStickState, direction };
+  }
+
+  return { changed: false };
 }
 
-function prefabMessage(text) {
-  const input = body.querySelector(".chatbox-view").querySelector("input");
-  input.focus();
-  input.value = text;
-  input.dispatchEvent(
-    new KeyboardEvent("keydown", {
-      key: "Enter", bubbles: true, cancelable: true, keyCode: 13, which: 13,
-    })
-  );
+function getAnalogStickState(x, y) {
+  const threshold = 0.5;
+  const centerThreshold = 0.1; // Adjust this threshold for center detection
+
+  if (Math.abs(x) < centerThreshold && Math.abs(y) < centerThreshold) {
+    return { changed: previousAnalogStickState !== "Center", direction: "Center" };
+  }
+
+  if (Math.abs(x) > threshold || Math.abs(y) > threshold) {
+    const direction = getDirection(x, y);
+    return { changed: direction !== previousAnalogStickState, direction };
+  }
+
+  return { changed: false };
 }
 
-// =============================================================================
-// LIMPEZA DO HEADER
-// =============================================================================
-
-document.querySelector(".rightbar").remove();
-document.querySelector(".header").remove();
+function getDirection(x, y) {
+  const angle = Math.atan2(y, x);
+  const angleInDegrees = (angle >= 0 ? angle : (2 * Math.PI + angle)) * (180 / Math.PI);
+  const sector = Math.round(angleInDegrees / 45) % 8;
+  const directions = ["d", "sd", "s", "sa", "a", "aw", "w", "wd"];
+  return directions[sector];
+}
