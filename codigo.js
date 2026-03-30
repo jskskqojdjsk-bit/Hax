@@ -678,17 +678,11 @@ function roomAdminSettings(playerItem) {
 
   let touchStart = {x: 0, y: 0};
   let touchStartTime = 0;
-  let tapTimeout = null;
 
   playerItem.addEventListener("touchstart", (e) => {
     touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
     touchStartTime = Date.now();
-  });
-  
-  playerItem.addEventListener("touchmove", (e) => {
-    // Se houver movimento, cancela o tap timeout
-    if(tapTimeout) clearTimeout(tapTimeout);
-  });
+  }, false);
   
   playerItem.addEventListener("touchend", (e) => {
     const currentX = e.changedTouches[0].clientX;
@@ -697,16 +691,16 @@ function roomAdminSettings(playerItem) {
     const duration = Date.now() - touchStartTime;
     
     // Tap rápido sem movimento (< 250ms e < 10px) = abre admin
+    // NÃO é um arraste
     if(duration < 250 && distance < 10) {
+      e.stopPropagation();
       e.preventDefault();
       const contextEvent = new MouseEvent("contextmenu", {
         bubbles: true, cancelable: true, view: window, button: 2,
       });
       playerItem.dispatchEvent(contextEvent);
     }
-    
-    if(tapTimeout) clearTimeout(tapTimeout);
-  });
+  }, false);
 }
 
 // =============================================================================
@@ -1343,6 +1337,7 @@ document.querySelector(".header").remove();
 if(void 0!==VIRTUAL_JOYSTICK){
   let draggedPlayer = null;
   let dragStartPos = {x: 0, y: 0};
+  let dragStartTime = 0;
   let isDraggingNow = false;
   
   body.addEventListener('touchstart', (e) => {
@@ -1350,6 +1345,7 @@ if(void 0!==VIRTUAL_JOYSTICK){
     if(playerEl) {
       draggedPlayer = playerEl;
       dragStartPos = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+      dragStartTime = Date.now();
       isDraggingNow = false;
       playerEl.style.opacity = '0.6';
       playerEl.style.backgroundColor = 'rgba(255, 200, 100, 0.5)';
@@ -1362,9 +1358,11 @@ if(void 0!==VIRTUAL_JOYSTICK){
     const currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
     const distance = Math.sqrt(Math.pow(currentX - dragStartPos.x, 2) + Math.pow(currentY - dragStartPos.y, 2));
+    const duration = Date.now() - dragStartTime;
     
-    if(distance >= 20) {
-      isDraggingNow = true; // Marcar que está arrastando
+    // Se tem movimento > 20px OU tempo > 300ms com movimento, é um drag
+    if(distance >= 20 || (distance > 5 && duration > 300)) {
+      isDraggingNow = true;
       
       const elementsUnder = document.elementsFromPoint(currentX, currentY);
       elementsUnder.forEach(el => {
