@@ -677,18 +677,38 @@ function roomAdminSettings(playerItem) {
   if (typeof ROOM_ADMIN_SETTINGS === "undefined") return;
 
   let doubleTap = false;
+  let touchStart = {x: 0, y: 0};
 
   playerItem.addEventListener("touchstart", (e) => {
+    touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+    
     if (!doubleTap) {
       doubleTap = true;
       setTimeout(() => { doubleTap = false; }, 300);
       return false;
     }
+    
+    // Verificar se houve movimento (drag)
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const distance = Math.sqrt(Math.pow(currentX - touchStart.x, 2) + Math.pow(currentY - touchStart.y, 2));
+    
+    // Se tiver movimento > 15px, é um drag, não dispara o contextmenu
+    if(distance > 15) return;
+    
     e.preventDefault();
     const contextEvent = new MouseEvent("contextmenu", {
       bubbles: true, cancelable: true, view: window, button: 2,
     });
     playerItem.dispatchEvent(contextEvent);
+  });
+  
+  playerItem.addEventListener("touchmove", (e) => {
+    // Se tiver movimento, cancela o double tap
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const distance = Math.sqrt(Math.pow(currentX - touchStart.x, 2) + Math.pow(currentY - touchStart.y, 2));
+    if(distance > 15) doubleTap = false;
   });
 }
 
@@ -1326,12 +1346,14 @@ document.querySelector(".header").remove();
 if(void 0!==VIRTUAL_JOYSTICK){
   let draggedPlayer = null;
   let dragStartPos = {x: 0, y: 0};
+  let isDraggingNow = false;
   
   body.addEventListener('touchstart', (e) => {
     const playerEl = e.target.closest('.player-list-item');
     if(playerEl) {
       draggedPlayer = playerEl;
       dragStartPos = {x: e.touches[0].clientX, y: e.touches[0].clientY};
+      isDraggingNow = false;
       playerEl.style.opacity = '0.6';
       playerEl.style.backgroundColor = 'rgba(255, 200, 100, 0.5)';
     }
@@ -1344,34 +1366,38 @@ if(void 0!==VIRTUAL_JOYSTICK){
     const currentY = e.touches[0].clientY;
     const distance = Math.sqrt(Math.pow(currentX - dragStartPos.x, 2) + Math.pow(currentY - dragStartPos.y, 2));
     
-    if(distance < 20) return;
-    
-    const elementsUnder = document.elementsFromPoint(currentX, currentY);
-    elementsUnder.forEach(el => {
-      const teamView = el.closest('.player-list-view');
-      if(teamView) {
-        teamView.style.backgroundColor = 'rgba(100, 200, 100, 0.3)';
-      }
-    });
+    if(distance >= 20) {
+      isDraggingNow = true; // Marcar que está arrastando
+      
+      const elementsUnder = document.elementsFromPoint(currentX, currentY);
+      elementsUnder.forEach(el => {
+        const teamView = el.closest('.player-list-view');
+        if(teamView) {
+          teamView.style.backgroundColor = 'rgba(100, 200, 100, 0.3)';
+        }
+      });
+    }
   }, true);
   
   body.addEventListener('touchend', (e) => {
     if(!draggedPlayer) return;
     
-    const endX = e.changedTouches[0].clientX;
-    const endY = e.changedTouches[0].clientY;
-    const elementBelow = document.elementFromPoint(endX, endY);
-    
-    if(elementBelow) {
-      const targetTeam = elementBelow.closest('.player-list-view');
-      if(targetTeam) {
-        const fromTeam = draggedPlayer.closest('.player-list-view').className.match(/t-(red|blue|spec)/)?.[1];
-        const toTeam = targetTeam.className.match(/t-(red|blue|spec)/)?.[1];
-        
-        if(fromTeam && toTeam && fromTeam !== toTeam) {
-          const playerName = draggedPlayer.querySelector('[data-hook="name"]')?.textContent;
-          console.log(`✅ Movendo: ${playerName} de ${fromTeam} para ${toTeam}`);
-          prefabMessage(`/move ${playerName} ${toTeam}`);
+    if(isDraggingNow) {
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const elementBelow = document.elementFromPoint(endX, endY);
+      
+      if(elementBelow) {
+        const targetTeam = elementBelow.closest('.player-list-view');
+        if(targetTeam) {
+          const fromTeam = draggedPlayer.closest('.player-list-view').className.match(/t-(red|blue|spec)/)?.[1];
+          const toTeam = targetTeam.className.match(/t-(red|blue|spec)/)?.[1];
+          
+          if(fromTeam && toTeam && fromTeam !== toTeam) {
+            const playerName = draggedPlayer.querySelector('[data-hook="name"]')?.textContent;
+            console.log(`✅ Movendo: ${playerName} de ${fromTeam} para ${toTeam}`);
+            prefabMessage(`/move ${playerName} ${toTeam}`);
+          }
         }
       }
     }
@@ -1382,5 +1408,6 @@ if(void 0!==VIRTUAL_JOYSTICK){
       tv.style.backgroundColor = '';
     });
     draggedPlayer = null;
+    isDraggingNow = false;
   }, true);
 }
