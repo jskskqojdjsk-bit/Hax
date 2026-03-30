@@ -676,39 +676,36 @@ function createResetSettingsButton() {
 function roomAdminSettings(playerItem) {
   if (typeof ROOM_ADMIN_SETTINGS === "undefined") return;
 
-  let doubleTap = false;
   let touchStart = {x: 0, y: 0};
+  let touchStartTime = 0;
+  let tapTimeout = null;
 
   playerItem.addEventListener("touchstart", (e) => {
     touchStart = {x: e.touches[0].clientX, y: e.touches[0].clientY};
-    
-    if (!doubleTap) {
-      doubleTap = true;
-      setTimeout(() => { doubleTap = false; }, 300);
-      return false;
-    }
-    
-    // Verificar se houve movimento (drag)
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const distance = Math.sqrt(Math.pow(currentX - touchStart.x, 2) + Math.pow(currentY - touchStart.y, 2));
-    
-    // Se tiver movimento > 15px, é um drag, não dispara o contextmenu
-    if(distance > 15) return;
-    
-    e.preventDefault();
-    const contextEvent = new MouseEvent("contextmenu", {
-      bubbles: true, cancelable: true, view: window, button: 2,
-    });
-    playerItem.dispatchEvent(contextEvent);
+    touchStartTime = Date.now();
   });
   
   playerItem.addEventListener("touchmove", (e) => {
-    // Se tiver movimento, cancela o double tap
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
+    // Se houver movimento, cancela o tap timeout
+    if(tapTimeout) clearTimeout(tapTimeout);
+  });
+  
+  playerItem.addEventListener("touchend", (e) => {
+    const currentX = e.changedTouches[0].clientX;
+    const currentY = e.changedTouches[0].clientY;
     const distance = Math.sqrt(Math.pow(currentX - touchStart.x, 2) + Math.pow(currentY - touchStart.y, 2));
-    if(distance > 15) doubleTap = false;
+    const duration = Date.now() - touchStartTime;
+    
+    // Tap rápido sem movimento (< 250ms e < 10px) = abre admin
+    if(duration < 250 && distance < 10) {
+      e.preventDefault();
+      const contextEvent = new MouseEvent("contextmenu", {
+        bubbles: true, cancelable: true, view: window, button: 2,
+      });
+      playerItem.dispatchEvent(contextEvent);
+    }
+    
+    if(tapTimeout) clearTimeout(tapTimeout);
   });
 }
 
